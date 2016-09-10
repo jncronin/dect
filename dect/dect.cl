@@ -20,14 +20,14 @@
  */
 
 kernel void dect(global short *a, global short *b,
-	float alphaa, float betaa, float gammaa,
-	float alphab, float betab, float gammab,
+	const float alphaa, const float betaa, const float gammaa,
+	const float alphab, const float betab, const float gammab,
 	global uchar *x, global uchar *y, global uchar *z,
-	float min_step,
+	const float min_step,
 	global short *m,
-	float mr,
-	int do_merge,
-	int idx_adjust)
+	const float mr,
+	const int do_merge,
+	const int idx_adjust)
 {
 	size_t idx = get_global_id(0);
 

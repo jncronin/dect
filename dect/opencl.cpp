@@ -41,6 +41,8 @@ static cl::Context *context;
 static cl::Program *program;
 static cl::Kernel *kernel;
 static cl::CommandQueue *queue;
+static cl::Device device;
+static std::vector<cl::Device> devices;
 
 extern int enhanced;
 
@@ -93,7 +95,6 @@ int opencl_init(int platform)
 
 	checkErr(err, "Context::Context()");
 
-	std::vector<cl::Device> devices;
 	devices = context->getInfo<CL_CONTEXT_DEVICES>();
 	checkErr(devices.size() > 0 ? CL_SUCCESS : -1, "devices.size() > 0");
 
@@ -131,6 +132,8 @@ int opencl_init(int platform)
 
 	queue = new cl::CommandQueue(*context, devices[0], 0, &err);
 	checkErr(err, "CommandQueue::CommandQueue()");
+	
+	device = devices[0];
 
 	return 0;
 }
@@ -150,32 +153,32 @@ int dect_algo_opencl(const int16_t *a, const int16_t *b,
 	/* Build output buffers */
 	cl::Buffer outx(
 		*context,
-		CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR,
+		CL_MEM_WRITE_ONLY,
 		out_size,
-		x,
+		NULL,
 		&err);
 	checkErr(err, "Buffer::Buffer()");
 	cl::Buffer outy(
 		*context,
-		CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR,
+		CL_MEM_WRITE_ONLY,
 		out_size,
-		y,
+		NULL,
 		&err);
 	checkErr(err, "Buffer::Buffer()");
 	cl::Buffer outz(
 		*context,
-		CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR,
+		CL_MEM_WRITE_ONLY,
 		out_size,
-		z,
+		NULL,
 		&err);
 	checkErr(err, "Buffer::Buffer()");
 
 	int dummy_buf[4];
 	cl::Buffer outm(
 		*context,
-		CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR,
+		CL_MEM_WRITE_ONLY,
 		m ? out_size * 2 : sizeof(cl_mem),
-		m ? (void*)m : (void*)dummy_buf,
+		NULL,
 		&err);
 	checkErr(err, "Buffer::Buffer()");
 
@@ -233,7 +236,7 @@ int dect_algo_opencl(const int16_t *a, const int16_t *b,
 		*kernel,
 		cl::NullRange,
 		cl::NDRange(out_size),
-		cl::NDRange(1, 1),
+		cl::NullRange,
 		NULL,
 		&event);
 	checkErr(err, "CommandQueue::enqueueNDRangeKernel()");
@@ -242,40 +245,58 @@ int dect_algo_opencl(const int16_t *a, const int16_t *b,
 	event.wait();
 
 	/* Get output buffers */
+	cl::Event eventx, eventy, eventz, eventm;
 	err = queue->enqueueReadBuffer(
 		outx,
-		CL_TRUE,
+		CL_FALSE,
 		0,
 		out_size,
-		x);
+		x,
+		NULL,
+		&eventx);
 	checkErr(err, "CommandQueue::enqueueReadBuffer()");
 
 	err = queue->enqueueReadBuffer(
 		outy,
-		CL_TRUE,
+		CL_FALSE,
 		0,
 		out_size,
-		y);
+		y,
+		NULL,
+		&eventy);
 	checkErr(err, "CommandQueue::enqueueReadBuffer()");
 
 	err = queue->enqueueReadBuffer(
 		outz,
-		CL_TRUE,
+		CL_FALSE,
 		0,
 		out_size,
-		z);
+		z,
+		NULL,
+		&eventz);
 	checkErr(err, "CommandQueue::enqueueReadBuffer()");
 
 	if (m)
 	{
 		err = queue->enqueueReadBuffer(
 			outm,
-			CL_TRUE,
+			CL_FALSE,
 			0,
-			out_size,
-			m);
+			out_size * 2,
+			m,
+			NULL,
+			&eventm);
 		checkErr(err, "CommandQueue::enqueueReadBuffer()");
 	}
+
+	// Need to wait for copying completion prior to
+	//  returning to main as next thing will be libtiff
+	//  writing these buffers
+	eventx.wait();
+	eventy.wait();
+	eventz.wait();
+	if (m)
+		eventm.wait();
 
 	return 0;
 }

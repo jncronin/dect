@@ -748,6 +748,12 @@ int _tmain(int argc, TCHAR *argv[])
 	TIFFFlush(ef);
 	TIFFClose(ef);
 
+	if (mf)
+	{
+		TIFFFlush(mf);
+		TIFFClose(mf);
+	}
+
 	TIFFClose(af);
 	TIFFClose(bf);
 
