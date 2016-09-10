@@ -1,3 +1,24 @@
+/* Copyright (C) 2016 by John Cronin
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 kernel void dect(global short *a, global short *b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
@@ -107,7 +128,11 @@ kernel void dect2(global short *a, global short *b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
 	global uchar *x, global uchar *y, global uchar *z,
-	float min_step)
+	float min_step,
+	global short *m,
+	float mr,
+	int do_merge,
+	int idx_adjust)
 {
 	size_t idx = get_global_id(0);
 
@@ -260,6 +285,9 @@ kernel void dect2(global short *a, global short *b,
 		tot_best_c += cur_best_c;
 	}
 
+	if(idx_adjust)
+		idx = idx_adjust - idx;
+
 	uchar best_a = (uchar)floor(tot_best_a / 3 * 255.0f);
 	uchar best_b = (uchar)floor(tot_best_b / 3 * 255.0f);
 	uchar best_c = (uchar)floor(tot_best_c / 3 * 255.0f);
@@ -267,4 +295,7 @@ kernel void dect2(global short *a, global short *b,
 	x[idx] = best_a;
 	y[idx] = best_b;
 	z[idx] = best_c;
+
+	if(do_merge)
+		m[idx] = (short)(dA * mr + dB * (1.0f - mr));
 }
