@@ -31,8 +31,6 @@
 #include <string>
 #include <iterator>
 
-const std::string hw("Hello World\n");
-
 static cl::Context *context;
 static cl::Program *program;
 static cl::Kernel *kernel;
