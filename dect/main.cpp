@@ -333,7 +333,7 @@ static int dect_algo_cpu_iter(
 }
 
 /* Convert TCHAR* to UTF-8 for passing to libtiff */
-static char *ascii(const TCHAR *s)
+char *ascii(const TCHAR *s)
 {
 #ifdef _UNICODE
 	size_t size;

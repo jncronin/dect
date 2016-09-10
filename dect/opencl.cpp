@@ -31,12 +31,20 @@
 #include <string>
 #include <iterator>
 
+#include <tchar.h>
+
+#ifdef _MSC_VER
+#include <Windows.h>
+#endif
+
 static cl::Context *context;
 static cl::Program *program;
 static cl::Kernel *kernel;
 static cl::CommandQueue *queue;
 
 extern int enhanced;
+
+char *ascii(const TCHAR *s);
 
 #define checkErr(err, name) \
 	if ((err) != CL_SUCCESS) { \
@@ -89,7 +97,23 @@ int opencl_init(int platform)
 	devices = context->getInfo<CL_CONTEXT_DEVICES>();
 	checkErr(devices.size() > 0 ? CL_SUCCESS : -1, "devices.size() > 0");
 
-	std::ifstream file("dect.cl");
+	// get filename of dect.cl
+#ifdef _MSC_VER
+	TCHAR fname[65536];
+	auto fname_len = GetModuleFileName(NULL, fname, 65536);
+	checkErr((fname_len < 65516) ? CL_SUCCESS : EXIT_FAILURE, "GetModuleFileName");
+	auto sep = _tcsrchr(fname, _TCHAR('\\'));
+	if (sep == NULL)
+		sep = fname;
+	else
+		sep++;
+	_tcscpy_s(sep, 19, _T("dect.cl"));
+	fname[65535] = _TCHAR(0);
+#else
+	TCHAR fname[] = _TEXT("dect.cl");
+#endif
+
+	std::ifstream file(ascii(fname));
 	checkErr(file.is_open() ? CL_SUCCESS : -1, "dect.cl");
 	std::string prog(
 		std::istreambuf_iterator<char>(file),
@@ -146,11 +170,12 @@ int dect_algo_opencl(const int16_t *a, const int16_t *b,
 		&err);
 	checkErr(err, "Buffer::Buffer()");
 
+	int dummy_buf[4];
 	cl::Buffer outm(
 		*context,
 		CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR,
 		m ? out_size * 2 : sizeof(cl_mem),
-		m,
+		m ? (void*)m : (void*)dummy_buf,
 		&err);
 	checkErr(err, "Buffer::Buffer()");
 
@@ -223,7 +248,7 @@ int dect_algo_opencl(const int16_t *a, const int16_t *b,
 		0,
 		out_size,
 		x);
-	checkErr(err, "ComamndQueue::enqueueReadBuffer()");
+	checkErr(err, "CommandQueue::enqueueReadBuffer()");
 
 	err = queue->enqueueReadBuffer(
 		outy,
@@ -231,7 +256,7 @@ int dect_algo_opencl(const int16_t *a, const int16_t *b,
 		0,
 		out_size,
 		y);
-	checkErr(err, "ComamndQueue::enqueueReadBuffer()");
+	checkErr(err, "CommandQueue::enqueueReadBuffer()");
 
 	err = queue->enqueueReadBuffer(
 		outz,
@@ -239,7 +264,18 @@ int dect_algo_opencl(const int16_t *a, const int16_t *b,
 		0,
 		out_size,
 		z);
-	checkErr(err, "ComamndQueue::enqueueReadBuffer()");
+	checkErr(err, "CommandQueue::enqueueReadBuffer()");
+
+	if (m)
+	{
+		err = queue->enqueueReadBuffer(
+			outm,
+			CL_TRUE,
+			0,
+			out_size,
+			m);
+		checkErr(err, "CommandQueue::enqueueReadBuffer()");
+	}
 
 	return 0;
 }

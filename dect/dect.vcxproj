@@ -192,10 +192,10 @@
     <ClCompile Include="XGetopt.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Intel_OpenCL_Build_Rules Include="dect.cl" />
+    <ClInclude Include="XGetopt.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="XGetopt.h" />
+    <Intel_OpenCL_Build_Rules Include="dect.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
