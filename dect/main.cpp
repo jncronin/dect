@@ -58,6 +58,7 @@ static float betab = DEF_BETAB;
 static float gammab = DEF_GAMMAB;
 static float min_step = DEF_MINSTEP;
 static float merge_fact = DEF_MERGEFACT;
+static int quiet = 0;
 
 static int16_t *readTIFFDirectory(TIFF *f, size_t *buf_size)
 {
@@ -113,6 +114,7 @@ static void help(TCHAR *fname)
 	std::cout << " -M file             generate a merged image file too" << std::endl;
 	std::cout << " -r ratio            ratio of A:B to use for merged image (defaults to " << DEF_MERGEFACT << ")" << std::endl;
 	std::cout << " -F                  rotate outputted images 180 degrees" << std::endl;
+	std::cout << " -q                  suppress progress output" << std::endl;
 	std::cout << " -h                  display this help" << std::endl;
 	std::cout << std::endl;
 }
@@ -130,7 +132,7 @@ int _tmain(int argc, TCHAR *argv[])
 	int do_rotate = 0;
 
 	int g;
-	while ((g = getopt(argc, argv, _T("A:B:x:y:z:a:b:c:d:e:f:g:hm:M:r:F"))) != -1)
+	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:a:b:c:d:e:f:g:hm:M:r:F"))) != -1)
 	{
 		switch (g)
 		{
@@ -188,6 +190,10 @@ int _tmain(int argc, TCHAR *argv[])
 
 		case 'F':
 			do_rotate = 1;
+			break;
+
+		case 'q':
+			quiet = 1;
 			break;
 
 		default:
@@ -433,7 +439,8 @@ int _tmain(int argc, TCHAR *argv[])
 			free(m);
 		}
 
-		printf("Processed frame %i\n", frame_id++);
+		if(!quiet)
+			printf("Processed frame %i\n", frame_id++);
 	} while (TIFFReadDirectory(af) && TIFFReadDirectory(bf));
 
 	TIFFFlush(cf);
