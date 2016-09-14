@@ -18,10 +18,10 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="opencl.cpp">
+    <ClCompile Include="XGetopt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="XGetopt.cpp">
+    <ClCompile Include="simul.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -29,10 +29,5 @@
     <ClInclude Include="XGetopt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Intel_OpenCL_Build_Rules Include="dect.cl">
-      <Filter>OpenCL Files</Filter>
-    </Intel_OpenCL_Build_Rules>
   </ItemGroup>
 </Project>
