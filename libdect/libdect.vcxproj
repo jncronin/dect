@@ -133,10 +133,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\dect\cpu.cpp" />
-    <ClCompile Include="..\dect\opencl.cpp" />
-    <ClCompile Include="..\dect\simul.cpp" />
+    <ClCompile Include="cpu.cpp" />
     <ClCompile Include="libdect.cpp" />
+    <ClCompile Include="opencl.cpp" />
+    <ClCompile Include="simul.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="dect.cl">
