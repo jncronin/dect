@@ -22,8 +22,6 @@
 #include <stdint.h>
 #include <math.h>
 
-extern int enhanced;
-
 /* Algorithm written with a view to parallelizing with OpenCL
 a, b			- input images
 alphaa, alphab	- CT density of material 1 in image a and b
@@ -58,7 +56,8 @@ current point.
 
 When cur_step < min_step we stop.
 */
-static void dect_algo_cpu(const int16_t *a, const int16_t *b,
+static void dect_algo_cpu(int enhanced,
+	const int16_t *a, const int16_t *b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
 	int idx,
@@ -125,6 +124,46 @@ static void dect_algo_cpu(const int16_t *a, const int16_t *b,
 			break;
 		}
 
+		/* First, iterate through ratio and ab at 0.1 intervals
+		to ensure we don't miss an approximate solution, then
+		iterate to find the actual best value - this prevents us
+		finding islands of solutions which aren't necessarily the best
+		solutions */
+
+		float best_err = 1000000.0f;
+		float best_ab = 0.0f;
+		float best_ratio = 0.0f;
+
+		for (float test_ab = 0.0f; test_ab <= 1.0f; test_ab += 0.1f)
+		{
+			for (float test_ratio = 0.0f; test_ratio <= 1.0f; test_ratio += 0.1f)
+			{
+				float cur_a = test_ab * test_ratio;
+				float cur_b = test_ab * (1.0f - test_ratio);
+				float cur_c = 1.0f - cur_a - cur_b;
+
+				float dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
+				float dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
+
+				float dA_err = (float)pow(dA_est - dA, 2);
+				float dB_err = (float)pow(dB_est - dB, 2);
+
+				float tot_err = dA_err + dB_err;
+
+				if (tot_err < best_err)
+				{
+					best_err = tot_err;
+					best_ab = test_ab;
+					best_ratio = test_ratio;
+				}
+			}
+		}
+
+		/* Now do an iterative search to find the best values */
+		cur_step = 0.05f;
+		cur_ratio = best_ratio;
+		cur_ab = best_ab;
+
 		while (cur_step >= min_step)
 		{
 			float new_ratio[4];
@@ -171,8 +210,8 @@ static void dect_algo_cpu(const int16_t *a, const int16_t *b,
 				float dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
 				float dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
 
-				float dA_err = pow(dA_est - dA, 2);
-				float dB_err = pow(dB_est - dB, 2);
+				float dA_err = (float)pow(dA_est - dA, 2);
+				float dB_err = (float)pow(dB_est - dB, 2);
 
 				float tot_err = dA_err + dB_err;
 
@@ -221,7 +260,7 @@ static void dect_algo_cpu(const int16_t *a, const int16_t *b,
 		tot_best_c += cur_best_c;
 	}
 
-	if (enhanced)
+	if (enhanced > 1)
 	{
 		tot_best_a /= enhanced;
 		tot_best_b /= enhanced;
@@ -243,7 +282,7 @@ static void dect_algo_cpu(const int16_t *a, const int16_t *b,
 		m[idx] = (uint16_t)(dA * mr + dB * (1.0f - mr));
 }
 
-int dect_algo_cpu_iter(
+int dect_algo_cpu_iter(int enhanced,
 	const int16_t *a, const int16_t *b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
@@ -255,7 +294,7 @@ int dect_algo_cpu_iter(
 	int idx_adjust)
 {
 	for (auto i = 0; i < (int)outsize; i++)
-		dect_algo_cpu(a, b, alphaa, betaa, gammaa,
+		dect_algo_cpu(enhanced, a, b, alphaa, betaa, gammaa,
 			alphab, betab, gammab, i, x, y, z, min_step,
 			m, mr, idx_adjust);
 	return 0;

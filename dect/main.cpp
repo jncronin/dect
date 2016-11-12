@@ -31,49 +31,9 @@
 #include <tchar.h>
 #include "XGetopt.h"
 
-int dect_algo_opencl(const int16_t *a, const int16_t *b,
-	float alphaa, float betaa, float gammaa,
-	float alphab, float betab, float gammab,
-	uint8_t *x, uint8_t *y, uint8_t *z,
-	size_t outsize,
-	float min_step,
-	int16_t *m,
-	float mr,
-	int idx_adjust);
+#include <libdect.h>
 
-int dect_algo_cpu_iter(const int16_t *a, const int16_t *b,
-	float alphaa, float betaa, float gammaa,
-	float alphab, float betab, float gammab,
-	uint8_t *x, uint8_t *y, uint8_t *z,
-	size_t outsize,
-	float min_step,
-	int16_t *m,
-	float mr,
-	int idx_adjust);
-
-int dect_algo_simul(const int16_t *a, const int16_t *b,
-	float alphaa, float betaa, float gammaa,
-	float alphab, float betab, float gammab,
-	uint8_t *x, uint8_t *y, uint8_t *z,
-	size_t out_size,
-	float min_step,
-	int16_t *m,
-	float mr,
-	int idx_adjust);
-
-int opencl_init(int platform);
-int opencl_dump_platforms();
-
-static int(*dect_algo)(
-	const int16_t *a, const int16_t *b,
-	float alphaa, float betaa, float gammaa,
-	float alphab, float betab, float gammab,
-	uint8_t *x, uint8_t *y, uint8_t *z,
-	size_t outsize,
-	float min_step,
-	int16_t *m,
-	float mr,
-	int idx_adjust);
+int dect_algo;
 
 #define DEF_ALPHAA 52.0f
 #define DEF_BETAA -995.0f
@@ -91,7 +51,7 @@ static float alphab = DEF_ALPHAB;
 static float betab = DEF_BETAB;
 static float gammab = DEF_GAMMAB;
 static float min_step = DEF_MINSTEP;
-int enhanced = 0;
+int enhanced = 1;
 static float merge_fact = DEF_MERGEFACT;
 static int quiet = 0;
 
@@ -155,16 +115,17 @@ static void help(TCHAR *fname)
 	std::cout << " -h                  display this help" << std::endl;
 	std::cout << std::endl;
 	std::cout << "Devices" << std::endl;
-	std::cout << " 0: CPU" << std::endl;
-	std::cout << " 1: CPU using simultaneous equations (fast but inaccurate)" << std::endl;
-	opencl_dump_platforms();
+
+	auto dev_count = dect_getDeviceCount();
+	for (auto i = 0; i < dev_count; i++)
+		std::cout << " " << i << ": " << dect_getDeviceName(i) << std::endl;
 	std::cout << std::endl;
 }
 
 int _tmain(int argc, TCHAR *argv[])
 {
 	size_t a_len, b_len;
-	dect_algo = dect_algo_cpu_iter;
+	dect_algo = 0;
 
 	TCHAR *afname = NULL;
 	TCHAR *bfname = NULL;
@@ -172,7 +133,6 @@ int _tmain(int argc, TCHAR *argv[])
 	TCHAR *yfname = _T("outputy.tiff");
 	TCHAR *zfname = _T("outputz.tiff");
 	TCHAR *mfname = NULL;
-	int dev = 0;
 	int do_rotate = 0;
 
 	int g;
@@ -198,7 +158,7 @@ int _tmain(int argc, TCHAR *argv[])
 			break;
 
 		case 'D':
-			dev = _ttoi(optarg);
+			dect_algo = _ttoi(optarg);
 			break;
 
 		case 'a':
@@ -280,23 +240,9 @@ int _tmain(int argc, TCHAR *argv[])
 	assert(df);
 	assert(ef);
 
-	if (dev == 0)
-		dect_algo = dect_algo_cpu_iter;
-	else if (dev == 1)
-		dect_algo = dect_algo_simul;
-	else
-	{
-		if (opencl_init(dev - 2) != 0)
-		{
-			std::cerr << "ERROR: opencl_init() failed, switching to CPU" << std::endl;
-			dect_algo = dect_algo_cpu_iter;
-		}
-		else
-			dect_algo = dect_algo_opencl;
-	}
-
-
 	int frame_id = 0;
+
+	dect_initDevice(dect_algo, enhanced);
 
 	do
 	{
@@ -316,37 +262,16 @@ int _tmain(int argc, TCHAR *argv[])
 			m = (int16_t *)malloc(a_len * 2);
 
 		// run the algorithm
-		auto algo_ret = dect_algo(a, b, alphaa, betaa, gammaa,
+		auto algo_ret = dect_process(
+			dect_algo, enhanced,
+			a, b, alphaa, betaa, gammaa,
 			alphab, betab, gammab,
 			x, y, z, a_len, min_step, m, merge_fact,
 			do_rotate ? (a_len - 1) : 0);
 		if (algo_ret != 0)
 		{
-			if (dect_algo == dect_algo_cpu_iter)
-			{
-				std::cerr << "ERROR: CPU algorithm failed" << std::endl;
-				exit(0);
-			}
-			else if (dect_algo == dect_algo_opencl)
-			{
-				std::cerr << "ERROR: OpenCL algorithm failed, switching to CPU" << std::endl;
-				dect_algo = dect_algo_cpu_iter;
-				algo_ret = dect_algo(a, b,
-					alphaa, betaa, gammaa,
-					alphab, betab, gammab,
-					x, y, z, a_len, min_step, m, merge_fact,
-					do_rotate ? (a_len  - 1): 0);
-				if (algo_ret != 0)
-				{
-					std::cerr << "ERROR: CPU algorithm also failed" << std::endl;
-					exit(0);
-				}
-			}
-			else
-			{
-				std::cerr << "ERROR: unknown algorithm failed" << std::endl;
-				exit(0);
-			}
+			std::cerr << "ERROR: DECT algorithm failed" << std::endl;
+			exit(0);
 		}
 
 		// attempt to write something out

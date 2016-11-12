@@ -30,12 +30,15 @@
 #include <iostream>
 #include <string>
 #include <iterator>
+#include <sstream>
 
 #include <tchar.h>
 
 #ifdef _MSC_VER
 #include <Windows.h>
 #endif
+
+#include "../libdect/dect.cl"
 
 static cl::Context *context;
 static cl::Program *program;
@@ -44,15 +47,20 @@ static cl::CommandQueue *queue;
 static cl::Device device;
 static std::vector<cl::Device> devices;
 
-extern int enhanced;
-
-char *ascii(const TCHAR *s);
+static int is_init = 0;
 
 #define checkErr(err, name) \
 	if ((err) != CL_SUCCESS) { \
 		std::cerr << "ERROR: " << (name) << " (" << (err) << ")" << std::endl; \
 		return(err); \
 	} \
+
+#define checkErr2(err, name) \
+	if ((err) != CL_SUCCESS) { \
+		std::cerr << "ERROR: " << (name) << " (" << (err) << ")" << std::endl; \
+		return(NULL); \
+	} \
+
 
 int opencl_dump_platforms()
 {
@@ -74,9 +82,49 @@ int opencl_dump_platforms()
 	return 0;
 }
 
-int opencl_init(int platform)
+int opencl_get_device_count()
+{
+	std::vector< cl::Platform > platformList;
+	cl::Platform::get(&platformList);
+	return platformList.size();
+}
+
+const char *opencl_get_device_name(int idx)
+{
+	std::vector< cl::Platform > platformList;
+	cl::Platform::get(&platformList);
+	checkErr2(platformList.size() != 0 ? CL_SUCCESS : -1, "cl::Platform::get");
+	//std::cerr << "Platform number is: " << platformList.size() << std::endl;
+
+	int id = 0;
+	for (auto it = platformList.begin(); it < platformList.end(); it++, id++)
+	{
+		if (idx == id)
+		{
+			std::string platformVendor;
+			std::string platformName;
+			it->getInfo((cl_platform_info)CL_PLATFORM_VENDOR, &platformVendor);
+			it->getInfo((cl_platform_info)CL_PLATFORM_NAME, &platformName);
+
+			std::stringstream ss;
+			ss << "OpenCL " << platformName << " (" << platformVendor << ")" << std::endl;
+
+			auto str = ss.str();
+
+			char *ret = new char[str.size() + 1];
+			std::copy(str.begin(), str.end(), ret);
+			ret[str.size()] = '\0'; // don't forget the terminating 0
+			return ret;
+		}
+	}
+
+	return NULL;
+}
+
+int opencl_init(int platform, int enhanced)
 {
 	cl_int err;
+	is_init = 0;
 
 	std::vector<cl::Platform> platformList;
 	cl::Platform::get(&platformList);
@@ -98,30 +146,9 @@ int opencl_init(int platform)
 	devices = context->getInfo<CL_CONTEXT_DEVICES>();
 	checkErr(devices.size() > 0 ? CL_SUCCESS : -1, "devices.size() > 0");
 
-	// get filename of dect.cl
-#ifdef _MSC_VER
-	TCHAR fname[65536];
-	auto fname_len = GetModuleFileName(NULL, fname, 65536);
-	checkErr((fname_len < 65516) ? CL_SUCCESS : EXIT_FAILURE, "GetModuleFileName");
-	auto sep = _tcsrchr(fname, _TCHAR('\\'));
-	if (sep == NULL)
-		sep = fname;
-	else
-		sep++;
-	_tcscpy_s(sep, 19, _T("dect.cl"));
-	fname[65535] = _TCHAR(0);
-#else
-	TCHAR fname[] = _TEXT("dect.cl");
-#endif
-
-	std::ifstream file(ascii(fname));
-	checkErr(file.is_open() ? CL_SUCCESS : -1, "dect.cl");
-	std::string prog(
-		std::istreambuf_iterator<char>(file),
-		(std::istreambuf_iterator<char>()));
 	cl::Program::Sources source(
 		1,
-		std::make_pair(prog.c_str(), prog.length() + 1));
+		std::make_pair(ks.c_str(), ks.length() + 1));
 	
 	program = new cl::Program(*context, source);
 	err = program->build(devices, "");
@@ -135,10 +162,12 @@ int opencl_init(int platform)
 	
 	device = devices[0];
 
+	is_init = 1;
 	return 0;
 }
 
-int dect_algo_opencl(const int16_t *a, const int16_t *b,
+int dect_algo_opencl(int enhanced,
+	const int16_t *a, const int16_t *b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
 	uint8_t *x, uint8_t *y, uint8_t *z,
@@ -149,6 +178,9 @@ int dect_algo_opencl(const int16_t *a, const int16_t *b,
 	int idx_adjust)
 {
 	cl_int err;
+
+	if (is_init == 0)
+		return -1;
 
 	/* Build output buffers */
 	cl::Buffer outx(

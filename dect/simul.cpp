@@ -50,7 +50,8 @@
 				a = (phi - gammab - epsilon(theta - gammaa)) / (gamma - alpha * epsilon)
 */
 
-int dect_algo_simul(const int16_t *a, const int16_t *b,
+int dect_algo_simul(int enhanced,
+	const int16_t *a, const int16_t *b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
 	uint8_t *x, uint8_t *y, uint8_t *z,

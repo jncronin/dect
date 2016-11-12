@@ -19,6 +19,8 @@
  * THE SOFTWARE.
  */
 
+const std::string ks = R"OPENCL(
+
 kernel void dect(global short *a, global short *b,
 	const float alphaa, const float betaa, const float gammaa,
 	const float alphab, const float betab, const float gammab,
@@ -31,13 +33,53 @@ kernel void dect(global short *a, global short *b,
 {
 	size_t idx = get_global_id(0);
 
-	float dA = a[idx];
-	float dB = b[idx];
+	float dA = (float)a[idx];
+	float dB = (float)b[idx];
 
 	float cur_ratio = 0.5f;
 	float cur_ab = 0.66f;
 	float cur_step = 0.25f;
 	float cur_error = 5000.0f * 5000.0f;
+
+	/* First, iterate through ratio and ab at 0.1 intervals
+	to ensure we don't miss an approximate solution, then
+	iterate to find the actual best value - this prevents us
+	finding islands of solutions which aren't necessarily the best
+	solutions */
+
+	float best_err = 1000000.0f;
+	float best_ab = 0.0f;
+	float best_ratio = 0.0f;
+
+	for (float test_ab = 0.0f; test_ab <= 1.0f; test_ab += 0.1f)
+	{
+		for (float test_ratio = 0.0f; test_ratio <= 1.0f; test_ratio += 0.1f)
+		{
+			float cur_a = test_ab * test_ratio;
+			float cur_b = test_ab * (1.0f - test_ratio);
+			float cur_c = 1.0f - cur_a - cur_b;
+
+			float dA_est = alphaa * cur_a + betaa * cur_b + gammaa * cur_c;
+			float dB_est = alphab * cur_a + betab * cur_b + gammab * cur_c;
+
+			float dA_err = (float)pow(dA_est - dA, 2.0f);
+			float dB_err = (float)pow(dB_est - dB, 2.0f);
+
+			float tot_err = dA_err + dB_err;
+
+			if (tot_err < best_err)
+			{
+				best_err = tot_err;
+				best_ab = test_ab;
+				best_ratio = test_ratio;
+			}
+		}
+	}
+
+	/* Now do an iterative search to find the best values */
+	cur_step = 0.05f;
+	cur_ratio = best_ratio;
+	cur_ab = best_ab;
 
 	while (cur_step >= min_step)
 	{
@@ -189,6 +231,46 @@ kernel void dect2(global short *a, global short *b,
 				break;
 		}
 
+		/* First, iterate through ratio and ab at 0.1 intervals
+		to ensure we don't miss an approximate solution, then
+		iterate to find the actual best value - this prevents us
+		finding islands of solutions which aren't necessarily the best
+		solutions */
+
+		float best_err = 1000000.0f;
+		float best_ab = 0.0f;
+		float best_ratio = 0.0f;
+
+		for (float test_ab = 0.0f; test_ab <= 1.0f; test_ab += 0.1f)
+		{
+			for (float test_ratio = 0.0f; test_ratio <= 1.0f; test_ratio += 0.1f)
+			{
+				float cur_a = test_ab * test_ratio;
+				float cur_b = test_ab * (1.0f - test_ratio);
+				float cur_c = 1.0f - cur_a - cur_b;
+
+				float dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
+				float dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
+
+				float dA_err = (float)pow(dA_est - dA, 2.0f);
+				float dB_err = (float)pow(dB_est - dB, 2.0f);
+
+				float tot_err = dA_err + dB_err;
+
+				if (tot_err < best_err)
+				{
+					best_err = tot_err;
+					best_ab = test_ab;
+					best_ratio = test_ratio;
+				}
+			}
+		}
+
+		/* Now do an iterative search to find the best values */
+		cur_step = 0.05f;
+		cur_ratio = best_ratio;
+		cur_ab = best_ab;
+
 		while (cur_step >= min_step)
 		{
 			float new_ratio[4];
@@ -299,3 +381,5 @@ kernel void dect2(global short *a, global short *b,
 	if(do_merge)
 		m[idx] = (short)(dA * mr + dB * (1.0f - mr));
 }
+
+)OPENCL";
