@@ -154,13 +154,19 @@ int opencl_init(int platform, int enhanced)
 	err = program->build(devices, "");
 	checkErr(err, "Program::build()");
 
-	kernel = new cl::Kernel(*program, enhanced ? "dect2" : "dect", &err);
+	kernel = new cl::Kernel(*program, enhanced == 3 ? "dect2" : "dect", &err);
 	checkErr(err, "Kernel::Kernel()");
 
 	queue = new cl::CommandQueue(*context, devices[0], 0, &err);
 	checkErr(err, "CommandQueue::CommandQueue()");
 	
 	device = devices[0];
+
+	cl_uint native_double_width = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>();
+	if (native_double_width == 0) {
+		printf("No double precision support in OpenCL device.\n");
+		return -1;
+	}
 
 	is_init = 1;
 	return 0;

@@ -35,12 +35,15 @@
 
 int dect_algo;
 
-#define DEF_ALPHAA 52.0f
-#define DEF_BETAA -995.0f
-#define DEF_GAMMAA 525.0f
-#define DEF_ALPHAB 53.0f
-#define DEF_BETAB -994.0f
-#define DEF_GAMMAB 200.0f
+/* Values from http://xrayphysics.com/dual_energy.html,
+	tissues are soft tissue, air and iodine */
+#define DEF_ALPHAA 62.0f
+#define DEF_BETAA -1000.0f
+#define DEF_GAMMAA 512.0f
+#define DEF_ALPHAB 58.0f
+#define DEF_BETAB -1000.0f
+#define DEF_GAMMAB 397.0f
+
 #define DEF_MINSTEP 0.001f
 #define DEF_MERGEFACT 0.5f
 
@@ -136,7 +139,7 @@ int _tmain(int argc, TCHAR *argv[])
 	int do_rotate = 0;
 
 	int g;
-	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:F"))) != -1)
+	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZ"))) != -1)
 	{
 		switch (g)
 		{
@@ -206,6 +209,10 @@ int _tmain(int argc, TCHAR *argv[])
 
 		case 'q':
 			quiet = 1;
+			break;
+
+		case 'Z':
+			quiet = 2;
 			break;
 
 		default:
@@ -455,8 +462,15 @@ int _tmain(int argc, TCHAR *argv[])
 			free(m);
 		}
 
-		if(!quiet)
+		switch (quiet)
+		{
+		case 0:
 			printf("Processed frame %i\n", frame_id++);
+			break;
+		case 2:
+			printf(".\n");
+			break;
+		}
 	} while (TIFFReadDirectory(af) && TIFFReadDirectory(bf));
 
 	TIFFFlush(cf);

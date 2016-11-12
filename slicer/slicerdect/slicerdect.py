@@ -243,6 +243,13 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
     self.applyButton.toolTip = "Run the algorithm."
     self.applyButton.enabled = False
     parametersFormLayout.addRow(self.applyButton)
+    
+    #
+    # Progress Bar
+    #
+    self.progbar = qt.QProgressBar();
+    self.progbar.setValue(0);
+    parametersFormLayout.addRow(self.progbar);
 
     # connections
     self.parseHelp()
@@ -265,7 +272,7 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
 
   def onApplyButton(self):
     logic = slicerdectLogic()
-    logic.run(self.inputa.currentNode(), self.inputb.currentNode(), int(self.alphaa.text), int(self.betaa.text), int(self.gammaa.text), int(self.alphab.text), int(self.betab.text), int(self.gammab.text), self.outputa.currentNode(), self.outputb.currentNode(), self.outputc.currentNode(), self.outputm.currentNode(), float(self.mratio.text), self.enhanced.isChecked(), self.flip.isChecked(), self.dectapp.text, self.device.currentIndex)
+    logic.run(self.inputa.currentNode(), self.inputb.currentNode(), int(self.alphaa.text), int(self.betaa.text), int(self.gammaa.text), int(self.alphab.text), int(self.betab.text), int(self.gammab.text), self.outputa.currentNode(), self.outputb.currentNode(), self.outputc.currentNode(), self.outputm.currentNode(), float(self.mratio.text), self.enhanced.isChecked(), self.flip.isChecked(), self.dectapp.text, self.device.currentIndex, self.progbar)
 
 #
 # slicer-dectLogic
@@ -281,26 +288,19 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
-  def hasImageData(self,volumeNode):
-    """This is an example logic method that
-    returns true if the passed in volume
-    node has valid image data
-    """
-    if not volumeNode:
-      logging.debug('hasImageData failed: no volume node')
-      return False
-    if volumeNode.GetImageData() == None:
-      logging.debug('hasImageData failed: no image data in volume node')
-      return False
-    return True
-
-  def run(self, inputa, inputb, alphaa, betaa, gammaa, alphab, betab, gammab, outputa, outputb, outputc, outputm, mratio, enhanced, flip, p, device):
+  def run(self, inputa, inputb, alphaa, betaa, gammaa, alphab, betab, gammab, outputa, outputb, outputc, outputm, mratio, enhanced, flip, p, device, pb = None):
     """
     Run the actual algorithm
     """
 
     logging.info('Processing started')
-   
+    
+    if pb is None:
+      pass
+    else:
+      pb.setValue(0)
+      slicer.app.processEvents()
+      
     td = slicer.util.tempDirectory("dect")
     ia = os.path.join(td, "a.tiff")
     ib = os.path.join(td, "b.tiff")
@@ -317,7 +317,7 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
       startupinfo = subprocess.STARTUPINFO()
       startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
       
-    pargs = [ p, '-A', ia, '-B', ib, '-a', str(alphaa), '-b', str(betaa), '-c', str(gammaa), '-d', str(alphab), '-e', str(betab), '-f', str(gammab), '-D', str(device), '-M', om, '-x', ox, '-y', oy, '-z', oz, '-r', str(mratio) ]
+    pargs = [ p, '-A', ia, '-B', ib, '-a', str(alphaa), '-b', str(betaa), '-c', str(gammaa), '-d', str(alphab), '-e', str(betab), '-f', str(gammab), '-D', str(device), '-M', om, '-x', ox, '-y', oy, '-z', oz, '-r', str(mratio), '-Z' ]
     if(enhanced):
       pargs.append('-E')
     if(flip):
@@ -327,7 +327,7 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
     
     p2 = subprocess.Popen(pargs, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupinfo)
 
-    p2.wait()
+    pb.wait()
     
     if(outputa is not None):
       sn = slicer.vtkMRMLVolumeArchetypeStorageNode()
@@ -350,6 +350,12 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
       sn.ReadData(outputm)
    
     logging.info('Processing completed')
+    
+    if pb is None:
+      pass
+    else:
+      pb.setValue(100)
+      slicer.app.processEvents()
 
     return True
 

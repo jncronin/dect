@@ -36,11 +36,6 @@ kernel void dect(global short *a, global short *b,
 	double dA = (double)a[idx];
 	double dB = (double)b[idx];
 
-	double cur_ratio = 0.5;
-	double cur_ab = 0.66;
-	double cur_step = 0.25;
-	double cur_error = 5000.0 * 5000.0;
-
 	/* First, iterate through ratio and ab at 0.1 intervals
 	to ensure we don't miss an approximate solution, then
 	iterate to find the actual best value - this prevents us
@@ -48,8 +43,8 @@ kernel void dect(global short *a, global short *b,
 	solutions */
 
 	double best_err = 1000000.0;
-	double best_ab = 0.0;
-	double best_ratio = 0.0;
+	double best_ab = 0.66;
+	double best_ratio = 0.5;
 
 	for (double test_ab = 0.0; test_ab <= 1.0; test_ab += 0.1)
 	{
@@ -57,13 +52,15 @@ kernel void dect(global short *a, global short *b,
 		{
 			double cur_a = test_ab * test_ratio;
 			double cur_b = test_ab * (1.0 - test_ratio);
-			double cur_c = 1.0 - cur_a - cur_b;
+			double cur_c = 1.0 - test_ab;
 
 			double dA_est = alphaa * cur_a + betaa * cur_b + gammaa * cur_c;
 			double dB_est = alphab * cur_a + betab * cur_b + gammab * cur_c;
 
-			double dA_err = (double)pow(dA_est - dA, 2.0);
-			double dB_err = (double)pow(dB_est - dB, 2.0);
+			//double dA_err = (double)pow(dA_est - dA, 2.0);
+			//double dB_err = (double)pow(dB_est - dB, 2.0);
+			double dA_err = (dA_est - dA) * (dA_est - dA);
+			double dB_err = (dB_est - dB) * (dB_est - dB);
 
 			double tot_err = dA_err + dB_err;
 
@@ -77,72 +74,75 @@ kernel void dect(global short *a, global short *b,
 	}
 
 	/* Now do an iterative search to find the best values */
-	cur_step = 0.05;
-	cur_ratio = best_ratio;
-	cur_ab = best_ab;
+	double cur_error = 5000.0 * 5000.0;
+	double cur_step = 0.05;
+	double cur_ratio = best_ratio;
+	double cur_ab = best_ab;
 
 	while (cur_step >= min_step)
 	{
-		double new_ratio[4];
-		double new_ab[4];
-
-		new_ratio[0] = cur_ratio;
-		new_ratio[1] = cur_ratio + cur_step;
-		new_ratio[2] = cur_ratio;
-		new_ratio[3] = cur_ratio - cur_step;
-
-		new_ab[0] = cur_ab + cur_step;
-		new_ab[1] = cur_ab;
-		new_ab[2] = cur_ab - cur_step;
-		new_ab[3] = cur_ab;
-
-		for (int i = 0; i < 4; i++)
-		{
-			if (new_ratio[i] < 0.0)
-				new_ratio[i] = 0.0;
-			else if (new_ratio[i] > 1.0)
-				new_ratio[i] = 1.0;
-
-			if (new_ab[i] < 0.0)
-				new_ab[i] = 0.0;
-			else if (new_ab[i] > 1.0)
-				new_ab[i] = 1.0;
-		}
-
-		double new_a[4];
-		double new_b[4];
-
-		int min_idx;
 		double min_err;
+		double min_ab;
+		double min_ratio;
 
 		for (int i = 0; i < 4; i++)
 		{
-			new_a[i] = new_ab[i] * new_ratio[i];
-			new_b[i] = new_ab[i] * (1.0f - new_ratio[i]);
-			
-			double cur_a = new_a[i];
-			double cur_b = new_b[i];
-			double cur_c = 1.0 - cur_a - cur_b;
+			double new_ab, new_ratio;
+			switch(i)
+			{
+				case 0:
+					new_ab = cur_ab + cur_step;
+					new_ratio = cur_ratio;
+					break;
+				case 1:
+					new_ab = cur_ab;
+					new_ratio = cur_ratio + cur_step;
+					break;
+				case 2:
+					new_ab = cur_ab - cur_step;
+					new_ratio = cur_ratio;
+					break;
+				case 3:
+					new_ab = cur_ab;
+					new_ratio = cur_ratio - cur_step;
+					break;
+			}
+
+			if(new_ab < 0.0)
+				new_ab = 0.0;
+			if(new_ab > 1.0)
+				new_ab = 1.0;
+			if(new_ratio < 0.0)
+				new_ratio = 0.0;
+			if(new_ratio > 1.0)
+				new_ratio = 1.0;
+
+			double cur_a = new_ab * new_ratio;
+			double cur_b = new_ab * (1.0 - new_ratio);
+			double cur_c = 1.0 - new_ab;
 
 			double dA_est = alphaa * cur_a + betaa * cur_b + gammaa * cur_c;
 			double dB_est = alphab * cur_a + betab * cur_b + gammab * cur_c;
 
-			double dA_err = pow(dA_est - dA, 2.0);
-			double dB_err = pow(dB_est - dB, 2.0);
+			//double dA_err = (double)pow(dA_est - dA, 2.0);
+			//double dB_err = (double)pow(dB_est - dB, 2.0);
+			double dA_err = (dA_est - dA) * (dA_est - dA);
+			double dB_err = (dB_est - dB) * (dB_est - dB);
 
 			double tot_err = dA_err + dB_err;
 
 			if (i == 0 || tot_err < min_err)
 			{
-				min_idx = i;
 				min_err = tot_err;
+				min_ratio = new_ratio;
+				min_ab = new_ab;
 			}
 		}
 
 		if (min_err < cur_error)
 		{
-			cur_ratio = new_ratio[min_idx];
-			cur_ab = new_ab[min_idx];
+			cur_ratio = min_ratio;
+			cur_ab = min_ab;
 			cur_error = min_err;
 		}
 		else
@@ -163,7 +163,7 @@ kernel void dect(global short *a, global short *b,
 	z[idx] = best_c;
 
 	if(do_merge)
-		m[idx] = (short)(dA * mr + dB * (1.0f - mr));
+		m[idx] = (short)(dA * mr + dB * (1.0 - mr));
 }
 
 kernel void dect2(global short *a, global short *b,
