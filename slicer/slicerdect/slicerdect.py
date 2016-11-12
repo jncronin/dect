@@ -322,6 +322,8 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
       pargs.append('-E')
     if(flip):
       pargs.append('-F')
+      
+    logging.info(pargs)
     
     p2 = subprocess.Popen(pargs, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupinfo)
 
