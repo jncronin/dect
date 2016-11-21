@@ -327,7 +327,7 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
     
     p2 = subprocess.Popen(pargs, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupinfo)
 
-    pb.wait()
+    p2.wait()
     
     if(outputa is not None):
       sn = slicer.vtkMRMLVolumeArchetypeStorageNode()
