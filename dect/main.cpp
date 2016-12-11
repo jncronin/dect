@@ -79,6 +79,22 @@ static int16_t *readTIFFDirectory(TIFF *f, size_t *buf_size)
 	return ret;
 }
 
+static uint8_t *readTIFFDirectory2(TIFF *f, size_t *buf_size)
+{
+	tdata_t buf;
+	tstrip_t strip;
+	buf = _TIFFmalloc(TIFFStripSize(f));
+	auto size = TIFFStripSize(f);
+	for (strip = 0; strip < TIFFNumberOfStrips(f); strip++)
+		TIFFReadEncodedStrip(f, strip, buf, (tsize_t)-1);
+
+	uint8_t *ret = (uint8_t *)buf;
+
+	*buf_size = (size_t)size;
+
+	return ret;
+}
+
 /* Convert TCHAR* to UTF-8 for passing to libtiff */
 char *ascii(const TCHAR *s)
 {
@@ -115,6 +131,7 @@ static void help(TCHAR *fname)
 	std::cout << " -r ratio            ratio of A:B to use for merged image (defaults to " << DEF_MERGEFACT << ")" << std::endl;
 	std::cout << " -F                  rotate output images 180 degrees" << std::endl;
 	std::cout << " -q                  suppress progress output" << std::endl;
+	std::cout << " -R                  reconstitute source images (overwrites source)" << std::endl;
 	std::cout << " -h                  display this help" << std::endl;
 	std::cout << std::endl;
 	std::cout << "Devices" << std::endl;
@@ -137,9 +154,10 @@ int _tmain(int argc, TCHAR *argv[])
 	TCHAR *zfname = _T("outputz.tiff");
 	TCHAR *mfname = NULL;
 	int do_rotate = 0;
+	int reconstitute = 0;
 
 	int g;
-	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZ"))) != -1)
+	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZR"))) != -1)
 	{
 		switch (g)
 		{
@@ -215,6 +233,10 @@ int _tmain(int argc, TCHAR *argv[])
 			quiet = 2;
 			break;
 
+		case 'R':
+			reconstitute = 1;
+			break;
+
 		default:
 			std::cout << "Unknown argument: " << (char)g << std::endl;
 			help(argv[0]);
@@ -228,266 +250,425 @@ int _tmain(int argc, TCHAR *argv[])
 		return 0;
 	}
 
-	auto atest = ascii(afname);
-	
-	auto af = TIFFOpen(ascii(afname), "r");
-	auto bf = TIFFOpen(ascii(bfname), "r");
-
-	auto cf = TIFFOpen(ascii(xfname), "w");
-	auto df = TIFFOpen(ascii(yfname), "w");
-	auto ef = TIFFOpen(ascii(zfname), "w");
-
-	TIFF *mf = NULL;
-	if (mfname)
-		mf = TIFFOpen(ascii(mfname), "w");
-
-	assert(af);
-	assert(bf);
-	assert(cf);
-	assert(df);
-	assert(ef);
-
-	int frame_id = 0;
-
-	dect_initDevice(dect_algo, enhanced);
-
-	do
+	if (reconstitute)
 	{
-		auto a = readTIFFDirectory(af, &a_len);
-		auto b = readTIFFDirectory(bf, &b_len);
+		auto af = TIFFOpen(ascii(afname), "w");
+		auto bf = TIFFOpen(ascii(bfname), "w");
 
-		assert(a);
-		assert(b);
-		assert(a_len == b_len);
+		auto cf = TIFFOpen(ascii(xfname), "r");
+		auto df = TIFFOpen(ascii(yfname), "r");
+		auto ef = TIFFOpen(ascii(zfname), "r");
 
-		uint8_t *x = (uint8_t *)malloc(a_len);
-		uint8_t *y = (uint8_t *)malloc(a_len);
-		uint8_t *z = (uint8_t *)malloc(a_len);
+		assert(af);
+		assert(bf);
+		assert(cf);
+		assert(df);
+		assert(ef);
 
-		int16_t *m = NULL;
-		if (mf)
-			m = (int16_t *)malloc(a_len * 2);
+		int frame_id = 0;
+		size_t c_len, d_len, e_len;
 
-		// run the algorithm
-		auto algo_ret = dect_process(
-			dect_algo, enhanced,
-			a, b, alphaa, betaa, gammaa,
-			alphab, betab, gammab,
-			x, y, z, a_len, min_step, m, merge_fact,
-			do_rotate ? (a_len - 1) : 0);
-		if (algo_ret != 0)
+		do
+
 		{
-			std::cerr << "ERROR: DECT algorithm failed" << std::endl;
-			exit(0);
-		}
+			auto c = readTIFFDirectory2(cf, &c_len);
+			auto d = readTIFFDirectory2(df, &d_len);
+			auto e = readTIFFDirectory2(ef, &e_len);
 
-		// attempt to write something out
-		uint32 iw, il, rps;
-		uint16 o, comp;
-		uint16 spp = 1;
-		uint16 bps = 8;
-		uint16 pc = PLANARCONFIG_CONTIG;
-		uint16 ru, ph;
-		float xp = 0.0f, yp = 0.0f, xr, yr;
-		int ret;
-		ret = TIFFGetField(af, TIFFTAG_IMAGEWIDTH, &iw);
-		assert(ret == 1);
-		ret = TIFFGetField(af, TIFFTAG_IMAGELENGTH, &il);
-		assert(ret == 1);
-		ret = TIFFGetField(af, TIFFTAG_ORIENTATION, &o);
-		assert(ret == 1);
-		ret = TIFFGetField(af, TIFFTAG_ROWSPERSTRIP, &rps);
-		assert(ret == 1);
-		ret = TIFFGetField(af, TIFFTAG_COMPRESSION, &comp);
-		assert(ret == 1);
-		ret = TIFFGetField(af, TIFFTAG_RESOLUTIONUNIT, &ru);
-		assert(ret == 1);
-		ret = TIFFGetField(af, TIFFTAG_PHOTOMETRIC, &ph);
-		assert(ret == 1);
-		if (TIFFGetField(af, TIFFTAG_XPOSITION, &xp) != 1)
-			xp = 0;
-		if (TIFFGetField(af, TIFFTAG_YPOSITION, &yp) != 1)
-			yp = 0;
-		ret = TIFFGetField(af, TIFFTAG_XRESOLUTION, &xr);
-		assert(ret == 1);
-		ret = TIFFGetField(af, TIFFTAG_YRESOLUTION, &yr);
-		assert(ret == 1);
+			assert(c);
+			assert(d);
+			assert(e);
+			assert(c_len == d_len);
+			assert(d_len == e_len);
 
+			int16_t *a = (int16_t *)malloc(c_len * 2);
+			int16_t *b = (int16_t *)malloc(c_len * 2);
 
-		ret = TIFFSetField(cf, TIFFTAG_IMAGEWIDTH, iw);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_IMAGELENGTH, il);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_SAMPLESPERPIXEL, spp);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_BITSPERSAMPLE, bps);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_ORIENTATION, o);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_PLANARCONFIG, pc);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_ROWSPERSTRIP, rps);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_COMPRESSION, comp);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_RESOLUTIONUNIT, ru);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_PHOTOMETRIC, ph);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_XPOSITION, xp);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_YPOSITION, yp);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_XRESOLUTION, xr);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_YRESOLUTION, yr);
-		assert(ret == 1);
-		ret = TIFFSetField(cf, TIFFTAG_SAMPLEFORMAT, 1);
-		assert(ret == 1);
+			dect_reconstitute(c, d, e,
+				alphaa, betaa, gammaa,
+				alphab, betab, gammab,
+				a, b, c_len,
+				do_rotate ? (c_len - 1) : 0);
 
-		ret = TIFFSetField(df, TIFFTAG_IMAGEWIDTH, iw);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_IMAGELENGTH, il);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_SAMPLESPERPIXEL, spp);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_BITSPERSAMPLE, bps);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_ORIENTATION, o);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_PLANARCONFIG, pc);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_ROWSPERSTRIP, rps);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_COMPRESSION, comp);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_RESOLUTIONUNIT, ru);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_PHOTOMETRIC, ph);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_XPOSITION, xp);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_YPOSITION, yp);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_XRESOLUTION, xr);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_YRESOLUTION, yr);
-		assert(ret == 1);
-		ret = TIFFSetField(df, TIFFTAG_SAMPLEFORMAT, 1);
-		assert(ret == 1);
-
-		ret = TIFFSetField(ef, TIFFTAG_IMAGEWIDTH, iw);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_IMAGELENGTH, il);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_SAMPLESPERPIXEL, spp);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_BITSPERSAMPLE, bps);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_ORIENTATION, o);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_PLANARCONFIG, pc);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_ROWSPERSTRIP, rps);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_COMPRESSION, comp);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_RESOLUTIONUNIT, ru);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_PHOTOMETRIC, ph);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_XPOSITION, xp);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_YPOSITION, yp);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_XRESOLUTION, xr);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_YRESOLUTION, yr);
-		assert(ret == 1);
-		ret = TIFFSetField(ef, TIFFTAG_SAMPLEFORMAT, 1);
-		assert(ret == 1);
-
-		TIFFWriteEncodedStrip(cf, 0, x, a_len);
-		TIFFWriteDirectory(cf);
-
-		TIFFWriteEncodedStrip(df, 0, y, a_len);
-		TIFFWriteDirectory(df);
-
-		TIFFWriteEncodedStrip(ef, 0, z, a_len);
-		TIFFWriteDirectory(ef);
-
-		_TIFFfree(a);
-		_TIFFfree(b);
-
-		free(x);
-		free(y);
-		free(z);
-
-		if (m)
-		{
-			ret = TIFFSetField(mf, TIFFTAG_IMAGEWIDTH, iw);
+			// attempt to write something out
+			uint32 iw, il, rps;
+			uint16 o, comp;
+			uint16 spp = 1;
+			uint16 bps = 16;
+			uint16 pc = PLANARCONFIG_CONTIG;
+			uint16 ru, ph;
+			float xp = 0.0f, yp = 0.0f, xr, yr;
+			int ret;
+			ret = TIFFGetField(cf, TIFFTAG_IMAGEWIDTH, &iw);
 			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_IMAGELENGTH, il);
+			ret = TIFFGetField(cf, TIFFTAG_IMAGELENGTH, &il);
 			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_SAMPLESPERPIXEL, 1);
+			ret = TIFFGetField(cf, TIFFTAG_ORIENTATION, &o);
 			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_BITSPERSAMPLE, 16);
+			ret = TIFFGetField(cf, TIFFTAG_ROWSPERSTRIP, &rps);
 			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_ORIENTATION, o);
+			ret = TIFFGetField(cf, TIFFTAG_COMPRESSION, &comp);
 			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_PLANARCONFIG, pc);
+			ret = TIFFGetField(cf, TIFFTAG_RESOLUTIONUNIT, &ru);
 			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_ROWSPERSTRIP, rps);
+			ret = TIFFGetField(cf, TIFFTAG_PHOTOMETRIC, &ph);
 			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_COMPRESSION, comp);
+			if (TIFFGetField(cf, TIFFTAG_XPOSITION, &xp) != 1)
+				xp = 0;
+			if (TIFFGetField(cf, TIFFTAG_YPOSITION, &yp) != 1)
+				yp = 0;
+			ret = TIFFGetField(cf, TIFFTAG_XRESOLUTION, &xr);
 			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_RESOLUTIONUNIT, ru);
-			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_PHOTOMETRIC, ph);
-			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_XPOSITION, xp);
-			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_YPOSITION, yp);
-			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_XRESOLUTION, xr);
-			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_YRESOLUTION, yr);
-			assert(ret == 1);
-			ret = TIFFSetField(mf, TIFFTAG_SAMPLEFORMAT, 2);
+			ret = TIFFGetField(cf, TIFFTAG_YRESOLUTION, &yr);
 			assert(ret == 1);
 
-			TIFFWriteEncodedStrip(mf, 0, m, a_len * 2);
-			TIFFWriteDirectory(mf);
 
-			free(m);
-		}
+			ret = TIFFSetField(af, TIFFTAG_IMAGEWIDTH, iw);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_IMAGELENGTH, il);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_SAMPLESPERPIXEL, spp);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_BITSPERSAMPLE, bps);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_ORIENTATION, o);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_PLANARCONFIG, pc);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_ROWSPERSTRIP, rps);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_COMPRESSION, comp);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_RESOLUTIONUNIT, ru);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_PHOTOMETRIC, ph);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_XPOSITION, xp);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_YPOSITION, yp);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_XRESOLUTION, xr);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_YRESOLUTION, yr);
+			assert(ret == 1);
+			ret = TIFFSetField(af, TIFFTAG_SAMPLEFORMAT, 2);
+			assert(ret == 1);
 
-		switch (quiet)
-		{
-		case 0:
-			printf("Processed frame %i\n", frame_id++);
-			break;
-		case 2:
-			printf(".\n");
-			break;
-		}
-	} while (TIFFReadDirectory(af) && TIFFReadDirectory(bf));
+			ret = TIFFSetField(bf, TIFFTAG_IMAGEWIDTH, iw);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_IMAGELENGTH, il);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_SAMPLESPERPIXEL, spp);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_BITSPERSAMPLE, bps);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_ORIENTATION, o);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_PLANARCONFIG, pc);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_ROWSPERSTRIP, rps);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_COMPRESSION, comp);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_RESOLUTIONUNIT, ru);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_PHOTOMETRIC, ph);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_XPOSITION, xp);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_YPOSITION, yp);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_XRESOLUTION, xr);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_YRESOLUTION, yr);
+			assert(ret == 1);
+			ret = TIFFSetField(bf, TIFFTAG_SAMPLEFORMAT, 2);
+			assert(ret == 1);
 
-	TIFFFlush(cf);
-	TIFFClose(cf);
-	TIFFFlush(df);
-	TIFFClose(df);
-	TIFFFlush(ef);
-	TIFFClose(ef);
+			TIFFWriteEncodedStrip(af, 0, a, c_len * 2);
+			TIFFWriteDirectory(af);
 
-	if (mf)
-	{
-		TIFFFlush(mf);
-		TIFFClose(mf);
+			TIFFWriteEncodedStrip(bf, 0, b, c_len * 2);
+			TIFFWriteDirectory(bf);
+
+			_TIFFfree(c);
+			_TIFFfree(d);
+			_TIFFfree(e);
+
+			free(a);
+			free(b);
+		} while (TIFFReadDirectory(cf) && TIFFReadDirectory(df) && TIFFReadDirectory(ef));
+
+		TIFFFlush(af);
+		TIFFClose(af);
+		TIFFFlush(bf);
+		TIFFClose(bf);
+
+		TIFFClose(cf);
+		TIFFClose(df);
+		TIFFClose(ef);
 	}
+	else
+	{
+		auto af = TIFFOpen(ascii(afname), "r");
+		auto bf = TIFFOpen(ascii(bfname), "r");
 
-	TIFFClose(af);
-	TIFFClose(bf);
+		auto cf = TIFFOpen(ascii(xfname), "w");
+		auto df = TIFFOpen(ascii(yfname), "w");
+		auto ef = TIFFOpen(ascii(zfname), "w");
+
+		TIFF *mf = NULL;
+		if (mfname)
+			mf = TIFFOpen(ascii(mfname), "w");
+
+		assert(af);
+		assert(bf);
+		assert(cf);
+		assert(df);
+		assert(ef);
+
+		int frame_id = 0;
+
+		dect_initDevice(dect_algo, enhanced);
+
+		do
+		{
+			auto a = readTIFFDirectory(af, &a_len);
+			auto b = readTIFFDirectory(bf, &b_len);
+
+			assert(a);
+			assert(b);
+			assert(a_len == b_len);
+
+			uint8_t *x = (uint8_t *)malloc(a_len);
+			uint8_t *y = (uint8_t *)malloc(a_len);
+			uint8_t *z = (uint8_t *)malloc(a_len);
+
+			int16_t *m = NULL;
+			if (mf)
+				m = (int16_t *)malloc(a_len * 2);
+
+			// run the algorithm
+			auto algo_ret = dect_process(
+				dect_algo, enhanced,
+				a, b, alphaa, betaa, gammaa,
+				alphab, betab, gammab,
+				x, y, z, a_len, min_step, m, merge_fact,
+				do_rotate ? (a_len - 1) : 0);
+			if (algo_ret != 0)
+			{
+				std::cerr << "ERROR: DECT algorithm failed" << std::endl;
+				exit(0);
+			}
+
+			// attempt to write something out
+			uint32 iw, il, rps;
+			uint16 o, comp;
+			uint16 spp = 1;
+			uint16 bps = 8;
+			uint16 pc = PLANARCONFIG_CONTIG;
+			uint16 ru, ph;
+			float xp = 0.0f, yp = 0.0f, xr, yr;
+			int ret;
+			ret = TIFFGetField(af, TIFFTAG_IMAGEWIDTH, &iw);
+			assert(ret == 1);
+			ret = TIFFGetField(af, TIFFTAG_IMAGELENGTH, &il);
+			assert(ret == 1);
+			ret = TIFFGetField(af, TIFFTAG_ORIENTATION, &o);
+			assert(ret == 1);
+			ret = TIFFGetField(af, TIFFTAG_ROWSPERSTRIP, &rps);
+			assert(ret == 1);
+			ret = TIFFGetField(af, TIFFTAG_COMPRESSION, &comp);
+			assert(ret == 1);
+			ret = TIFFGetField(af, TIFFTAG_RESOLUTIONUNIT, &ru);
+			assert(ret == 1);
+			ret = TIFFGetField(af, TIFFTAG_PHOTOMETRIC, &ph);
+			assert(ret == 1);
+			if (TIFFGetField(af, TIFFTAG_XPOSITION, &xp) != 1)
+				xp = 0;
+			if (TIFFGetField(af, TIFFTAG_YPOSITION, &yp) != 1)
+				yp = 0;
+			ret = TIFFGetField(af, TIFFTAG_XRESOLUTION, &xr);
+			assert(ret == 1);
+			ret = TIFFGetField(af, TIFFTAG_YRESOLUTION, &yr);
+			assert(ret == 1);
+
+
+			ret = TIFFSetField(cf, TIFFTAG_IMAGEWIDTH, iw);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_IMAGELENGTH, il);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_SAMPLESPERPIXEL, spp);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_BITSPERSAMPLE, bps);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_ORIENTATION, o);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_PLANARCONFIG, pc);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_ROWSPERSTRIP, rps);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_COMPRESSION, comp);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_RESOLUTIONUNIT, ru);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_PHOTOMETRIC, ph);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_XPOSITION, xp);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_YPOSITION, yp);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_XRESOLUTION, xr);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_YRESOLUTION, yr);
+			assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_SAMPLEFORMAT, 1);
+			assert(ret == 1);
+
+			ret = TIFFSetField(df, TIFFTAG_IMAGEWIDTH, iw);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_IMAGELENGTH, il);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_SAMPLESPERPIXEL, spp);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_BITSPERSAMPLE, bps);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_ORIENTATION, o);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_PLANARCONFIG, pc);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_ROWSPERSTRIP, rps);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_COMPRESSION, comp);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_RESOLUTIONUNIT, ru);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_PHOTOMETRIC, ph);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_XPOSITION, xp);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_YPOSITION, yp);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_XRESOLUTION, xr);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_YRESOLUTION, yr);
+			assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_SAMPLEFORMAT, 1);
+			assert(ret == 1);
+
+			ret = TIFFSetField(ef, TIFFTAG_IMAGEWIDTH, iw);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_IMAGELENGTH, il);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_SAMPLESPERPIXEL, spp);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_BITSPERSAMPLE, bps);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_ORIENTATION, o);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_PLANARCONFIG, pc);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_ROWSPERSTRIP, rps);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_COMPRESSION, comp);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_RESOLUTIONUNIT, ru);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_PHOTOMETRIC, ph);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_XPOSITION, xp);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_YPOSITION, yp);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_XRESOLUTION, xr);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_YRESOLUTION, yr);
+			assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_SAMPLEFORMAT, 1);
+			assert(ret == 1);
+
+			TIFFWriteEncodedStrip(cf, 0, x, a_len);
+			TIFFWriteDirectory(cf);
+
+			TIFFWriteEncodedStrip(df, 0, y, a_len);
+			TIFFWriteDirectory(df);
+
+			TIFFWriteEncodedStrip(ef, 0, z, a_len);
+			TIFFWriteDirectory(ef);
+
+			_TIFFfree(a);
+			_TIFFfree(b);
+
+			free(x);
+			free(y);
+			free(z);
+
+			if (m)
+			{
+				ret = TIFFSetField(mf, TIFFTAG_IMAGEWIDTH, iw);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_IMAGELENGTH, il);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_SAMPLESPERPIXEL, 1);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_BITSPERSAMPLE, 16);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_ORIENTATION, o);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_PLANARCONFIG, pc);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_ROWSPERSTRIP, rps);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_COMPRESSION, comp);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_RESOLUTIONUNIT, ru);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_PHOTOMETRIC, ph);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_XPOSITION, xp);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_YPOSITION, yp);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_XRESOLUTION, xr);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_YRESOLUTION, yr);
+				assert(ret == 1);
+				ret = TIFFSetField(mf, TIFFTAG_SAMPLEFORMAT, 2);
+				assert(ret == 1);
+
+				TIFFWriteEncodedStrip(mf, 0, m, a_len * 2);
+				TIFFWriteDirectory(mf);
+
+				free(m);
+			}
+
+			switch (quiet)
+			{
+			case 0:
+				printf("Processed frame %i\n", frame_id++);
+				break;
+			case 2:
+				printf(".\n");
+				break;
+			}
+		} while (TIFFReadDirectory(af) && TIFFReadDirectory(bf));
+
+		TIFFFlush(cf);
+		TIFFClose(cf);
+		TIFFFlush(df);
+		TIFFClose(df);
+		TIFFFlush(ef);
+		TIFFClose(ef);
+
+		if (mf)
+		{
+			TIFFFlush(mf);
+			TIFFClose(mf);
+		}
+
+		TIFFClose(af);
+		TIFFClose(bf);
+	}
 
 	return 0;
 }
