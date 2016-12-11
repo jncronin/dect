@@ -126,3 +126,33 @@ int dect_process(
 		return ret;
 	}
 }
+
+/* Create source images from processed images - for testing accuracy
+	of various algorithms */
+int dect_reconstitute(
+	const uint8_t *x, const uint8_t *y, const uint8_t *z,
+	float alphaa, float betaa, float gammaa,
+	float alphab, float betab, float gammab,
+	int16_t *a, int16_t *b,
+	size_t outsize,
+	int idx_adjust)
+{
+	for (size_t idx = 0; idx < outsize; idx++)
+	{
+		float curx = (float)x[idx] / 255.0f;
+		float cury = (float)y[idx] / 255.0f;
+		float curz = (float)z[idx] / 255.0f;
+		
+		float cura = curx * alphaa + cury * betaa + curz * gammaa;
+		float curb = curx * alphab + cury * betab + curz * gammab;
+
+		auto out_idx = idx;
+		if (idx_adjust)
+			out_idx = idx_adjust - idx;
+
+		a[out_idx] = (int16_t)cura;
+		b[out_idx] = (int16_t)curb;
+	}
+
+	return 0;
+}

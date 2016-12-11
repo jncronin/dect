@@ -43,4 +43,12 @@ int dect_process(
 	float mr,
 	int idx_adjust);
 
+int dect_reconstitute(
+	const uint8_t *x, const uint8_t *y, const uint8_t *z,
+	float alphaa, float betaa, float gammaa,
+	float alphab, float betab, float gammab,
+	int16_t *a, int16_t *b,
+	size_t outsize,
+	int idx_adjust);
+
 #endif
