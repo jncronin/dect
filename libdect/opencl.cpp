@@ -248,7 +248,7 @@ int dect_algo_opencl(int enhanced,
 	checkErr(err, "Kernel::setArg(5)");
 	err = kernel->setArg(6, (double)betab);
 	checkErr(err, "Kernel::setArg(6)");
-	err = kernel->setArg(7, (double)gammaa);
+	err = kernel->setArg(7, (double)gammab);
 	checkErr(err, "Kernel::setArg(7)");
 	err = kernel->setArg(8, outx);
 	checkErr(err, "Kernel::setArg(8)");

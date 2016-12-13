@@ -195,11 +195,6 @@ kernel void dect2(global short *a, global short *b,
 	Then average out at the end */
 	for(int i = 0; i < 3; i++)
 	{
-		double cur_ratio = 0.5;
-		double cur_ab = 0.66;
-		double cur_step = 0.25;
-		double cur_error = 5000.0 * 5000.0;
-
 		double calphaa, cbetaa, cgammaa;
 		double calphab, cbetab, cgammab;
 
@@ -252,8 +247,8 @@ kernel void dect2(global short *a, global short *b,
 				double dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
 				double dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
 
-				double dA_err = (double)pow(dA_est - dA, 2.0);
-				double dB_err = (double)pow(dB_est - dB, 2.0);
+				double dA_err = (dA_est - dA) * (dA_est - dA);
+				double dB_err = (dB_est - dB) * (dB_est - dB);
 
 				double tot_err = dA_err + dB_err;
 
@@ -267,73 +262,73 @@ kernel void dect2(global short *a, global short *b,
 		}
 
 		/* Now do an iterative search to find the best values */
-		cur_step = 0.05;
-		cur_ratio = best_ratio;
-		cur_ab = best_ab;
+		double cur_step = 0.05;
 
 		while (cur_step >= min_step)
 		{
-			double new_ratio[4];
-			double new_ab[4];
-
-			new_ratio[0] = cur_ratio;
-			new_ratio[1] = cur_ratio + cur_step;
-			new_ratio[2] = cur_ratio;
-			new_ratio[3] = cur_ratio - cur_step;
-
-			new_ab[0] = cur_ab + cur_step;
-			new_ab[1] = cur_ab;
-			new_ab[2] = cur_ab - cur_step;
-			new_ab[3] = cur_ab;
-
-			for (int i = 0; i < 4; i++)
-			{
-				if (new_ratio[i] < 0.0)
-					new_ratio[i] = 0.0;
-				else if (new_ratio[i] > 1.0)
-					new_ratio[i] = 1.0;
-
-				if (new_ab[i] < 0.0)
-					new_ab[i] = 0.0;
-				else if (new_ab[i] > 1.0)
-					new_ab[i] = 1.0;
-			}
-
-			double new_a[4];
-			double new_b[4];
-
-			int min_idx;
 			double min_err;
+			double min_ab;
+			double min_ratio;
 
-			for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
 			{
-				new_a[i] = new_ab[i] * new_ratio[i];
-				new_b[i] = new_ab[i] * (1.0f - new_ratio[i]);
-			
-				double cur_a = new_a[i];
-				double cur_b = new_b[i];
-				double cur_c = 1.0f - cur_a - cur_b;
+				double new_ab, new_ratio;
+				switch (j)
+				{
+				case 0:
+					new_ab = best_ab + cur_step;
+					new_ratio = best_ratio;
+					break;
+				case 1:
+					new_ab = best_ab;
+					new_ratio = best_ratio + cur_step;
+					break;
+				case 2:
+					new_ab = best_ab - cur_step;
+					new_ratio = best_ratio;
+					break;
+				case 3:
+					new_ab = best_ab;
+					new_ratio = best_ratio - cur_step;
+					break;
+				}
+
+				if (new_ab < 0.0)
+					new_ab = 0.0;
+				if (new_ab > 1.0)
+					new_ab = 1.0;
+				if (new_ratio < 0.0)
+					new_ratio = 0.0;
+				if (new_ratio > 1.0)
+					new_ratio = 1.0;
+
+				double cur_a = new_ab * new_ratio;
+				double cur_b = new_ab * (1.0 - new_ratio);
+				double cur_c = 1.0 - new_ab;
 
 				double dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
 				double dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
 
-				double dA_err = pow(dA_est - dA, 2.0);
-				double dB_err = pow(dB_est - dB, 2.0);
+				//double dA_err = (double)pow(dA_est - dA, 2.0);
+				//double dB_err = (double)pow(dB_est - dB, 2.0);
+				double dA_err = (dA_est - dA) * (dA_est - dA);
+				double dB_err = (dB_est - dB) * (dB_est - dB);
 
 				double tot_err = dA_err + dB_err;
 
-				if (i == 0 || tot_err < min_err)
+				if (j == 0 || tot_err < min_err)
 				{
-					min_idx = i;
 					min_err = tot_err;
+					min_ratio = new_ratio;
+					min_ab = new_ab;
 				}
 			}
 
-			if (min_err < cur_error)
+			if (min_err < best_err)
 			{
-				cur_ratio = new_ratio[min_idx];
-				cur_ab = new_ab[min_idx];
-				cur_error = min_err;
+				best_ratio = min_ratio;
+				best_ab = min_ab;
+				best_err = min_err;
 			}
 			else
 			{
@@ -346,19 +341,19 @@ kernel void dect2(global short *a, global short *b,
 		switch(i)
 		{
 			case 0:
-				cur_best_a = cur_ab * cur_ratio;
-				cur_best_b = cur_ab * (1.0 - cur_ratio);
-				cur_best_c = 1.0 - cur_ab;
+				cur_best_a = best_ab * best_ratio;
+				cur_best_b = best_ab * (1.0 - best_ratio);
+				cur_best_c = 1.0 - best_ab;
 				break;
 			case 1:
-				cur_best_c = cur_ab * cur_ratio;
-				cur_best_a = cur_ab * (1.0 - cur_ratio);
-				cur_best_b = 1.0 - cur_ab;
+				cur_best_c = best_ab * best_ratio;
+				cur_best_a = best_ab * (1.0 - best_ratio);
+				cur_best_b = 1.0 - best_ab;
 				break;
 			case 2:
-				cur_best_b = cur_ab * cur_ratio;
-				cur_best_c = cur_ab * (1.0 - cur_ratio);
-				cur_best_a = 1.0 - cur_ab;
+				cur_best_b = best_ab * best_ratio;
+				cur_best_c = best_ab * (1.0 - best_ratio);
+				cur_best_a = 1.0 - best_ab;
 				break;
 		}
 

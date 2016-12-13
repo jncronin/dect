@@ -58,21 +58,21 @@ When cur_step < min_step we stop.
 */
 static void dect_algo_cpu(int enhanced,
 	const int16_t *a, const int16_t *b,
-	float alphaa, float betaa, float gammaa,
-	float alphab, float betab, float gammab,
+	double alphaa, double betaa, double gammaa,
+	double alphab, double betab, double gammab,
 	int idx,
 	uint8_t *x, uint8_t *y, uint8_t *z,
-	float min_step,
+	double min_step,
 	int16_t *m,
-	float mr,
+	double mr,
 	int idx_adjust)
 {
-	float dA = a[idx];
-	float dB = b[idx];
+	double dA = a[idx];
+	double dB = b[idx];
 
-	float tot_best_a = 0.0f;
-	float tot_best_b = 0.0f;
-	float tot_best_c = 0.0f;
+	double tot_best_a = 0.0;
+	double tot_best_b = 0.0;
+	double tot_best_c = 0.0;
 
 	/* in the case of an enhanced algorithm, we do the same
 	as the standard but permutate a, b, and c through
@@ -88,13 +88,13 @@ static void dect_algo_cpu(int enhanced,
 
 	for (int i = 0; i < enhanced; i++)
 	{
-		float cur_ratio = 0.5f;
-		float cur_ab = 0.66f;
-		float cur_step = 0.25f;
-		float cur_error = 5000.0f * 5000.0f;
+		double cur_ratio = 0.5;
+		double cur_ab = 0.66;
+		double cur_step = 0.25;
+		double cur_error = 5000.0 * 5000.0;
 
-		float calphaa, cbetaa, cgammaa;
-		float calphab, cbetab, cgammab;
+		double calphaa, cbetaa, cgammaa;
+		double calphab, cbetab, cgammab;
 
 		switch (i)
 		{
@@ -130,25 +130,25 @@ static void dect_algo_cpu(int enhanced,
 		finding islands of solutions which aren't necessarily the best
 		solutions */
 
-		float best_err = 1000000.0f;
-		float best_ab = 0.0f;
-		float best_ratio = 0.0f;
+		double best_err = 5000.0 * 5000.0;
+		double best_ab = 0.0;
+		double best_ratio = 0.0;
 
-		for (float test_ab = 0.0f; test_ab <= 1.0f; test_ab += 0.1f)
+		for (double test_ab = 0.0; test_ab <= 1.0; test_ab += 0.1)
 		{
-			for (float test_ratio = 0.0f; test_ratio <= 1.0f; test_ratio += 0.1f)
+			for (double test_ratio = 0.0; test_ratio <= 1.0; test_ratio += 0.1)
 			{
-				float cur_a = test_ab * test_ratio;
-				float cur_b = test_ab * (1.0f - test_ratio);
-				float cur_c = 1.0f - cur_a - cur_b;
+				double cur_a = test_ab * test_ratio;
+				double cur_b = test_ab * (1.0 - test_ratio);
+				double cur_c = 1.0 - cur_a - cur_b;
 
-				float dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
-				float dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
+				double dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
+				double dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
 
-				float dA_err = (float)pow(dA_est - dA, 2);
-				float dB_err = (float)pow(dB_est - dB, 2);
+				double dA_err = (double)pow(dA_est - dA, 2);
+				double dB_err = (double)pow(dB_est - dB, 2);
 
-				float tot_err = dA_err + dB_err;
+				double tot_err = dA_err + dB_err;
 
 				if (tot_err < best_err)
 				{
@@ -160,98 +160,100 @@ static void dect_algo_cpu(int enhanced,
 		}
 
 		/* Now do an iterative search to find the best values */
-		cur_step = 0.05f;
+		cur_step = 0.05;
 		cur_ratio = best_ratio;
 		cur_ab = best_ab;
 
 		while (cur_step >= min_step)
 		{
-			float new_ratio[4];
-			float new_ab[4];
+			double min_err;
+			double min_ab;
+			double min_ratio;
 
-			new_ratio[0] = cur_ratio;
-			new_ratio[1] = cur_ratio + cur_step;
-			new_ratio[2] = cur_ratio;
-			new_ratio[3] = cur_ratio - cur_step;
-
-			new_ab[0] = cur_ab + cur_step;
-			new_ab[1] = cur_ab;
-			new_ab[2] = cur_ab - cur_step;
-			new_ab[3] = cur_ab;
-
-			for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
 			{
-				if (new_ratio[i] < 0.0f)
-					new_ratio[i] = 0.0f;
-				else if (new_ratio[i] > 1.0f)
-					new_ratio[i] = 1.0f;
-
-				if (new_ab[i] < 0.0f)
-					new_ab[i] = 0.0f;
-				else if (new_ab[i] > 1.0f)
-					new_ab[i] = 1.0f;
-			}
-
-			float new_a[4];
-			float new_b[4];
-
-			int min_idx;
-			float min_err;
-
-			for (int i = 0; i < 4; i++)
-			{
-				new_a[i] = new_ab[i] * new_ratio[i];
-				new_b[i] = new_ab[i] * (1.0f - new_ratio[i]);
-
-				float cur_a = new_a[i];
-				float cur_b = new_b[i];
-				float cur_c = 1.0f - cur_a - cur_b;
-
-				float dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
-				float dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
-
-				float dA_err = (float)pow(dA_est - dA, 2);
-				float dB_err = (float)pow(dB_est - dB, 2);
-
-				float tot_err = dA_err + dB_err;
-
-				if (i == 0 || tot_err < min_err)
+				double new_ab, new_ratio;
+				switch (j)
 				{
-					min_idx = i;
+				case 0:
+					new_ab = cur_ab + cur_step;
+					new_ratio = cur_ratio;
+					break;
+				case 1:
+					new_ab = cur_ab;
+					new_ratio = cur_ratio + cur_step;
+					break;
+				case 2:
+					new_ab = cur_ab - cur_step;
+					new_ratio = cur_ratio;
+					break;
+				case 3:
+					new_ab = cur_ab;
+					new_ratio = cur_ratio - cur_step;
+					break;
+				}
+
+				if (new_ab < 0.0)
+					new_ab = 0.0;
+				if (new_ab > 1.0)
+					new_ab = 1.0;
+				if (new_ratio < 0.0)
+					new_ratio = 0.0;
+				if (new_ratio > 1.0)
+					new_ratio = 1.0;
+
+				double cur_a = new_ab * new_ratio;
+				double cur_b = new_ab * (1.0 - new_ratio);
+				double cur_c = 1.0 - new_ab;
+
+				double dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
+				double dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
+
+				//double dA_err = (double)pow(dA_est - dA, 2.0);
+				//double dB_err = (double)pow(dB_est - dB, 2.0);
+				double dA_err = (dA_est - dA) * (dA_est - dA);
+				double dB_err = (dB_est - dB) * (dB_est - dB);
+
+				double tot_err = dA_err + dB_err;
+
+				if (j == 0 || tot_err < min_err)
+				{
 					min_err = tot_err;
+					min_ratio = new_ratio;
+					min_ab = new_ab;
 				}
 			}
 
 			if (min_err < cur_error)
 			{
-				cur_ratio = new_ratio[min_idx];
-				cur_ab = new_ab[min_idx];
+				cur_ratio = min_ratio;
+				cur_ab = min_ab;
 				cur_error = min_err;
 			}
 			else
 			{
-				cur_step = cur_step / 2.0f;
+				cur_step = cur_step / 2.0;
 			}
 		}
 
-		float cur_best_a, cur_best_b, cur_best_c;
+		double cur_best_a, cur_best_b, cur_best_c;
 
 		switch (i)
 		{
 		case 0:
 			cur_best_a = cur_ab * cur_ratio;
-			cur_best_b = cur_ab * (1.0f - cur_ratio);
-			cur_best_c = 1.0f - cur_ab;
+			cur_best_b = cur_ab * (1.0 - cur_ratio);
+			cur_best_c = 1.0 - cur_ab;
 			break;
 		case 1:
 			cur_best_c = cur_ab * cur_ratio;
-			cur_best_a = cur_ab * (1.0f - cur_ratio);
-			cur_best_b = 1.0f - cur_ab;
+			cur_best_a = cur_ab * (1.0 - cur_ratio);
+			cur_best_b = 1.0 - cur_ab;
 			break;
 		case 2:
 			cur_best_b = cur_ab * cur_ratio;
-			cur_best_c = cur_ab * (1.0f - cur_ratio);
-			cur_best_a = 1.0f - cur_ab;
+			cur_best_c = cur_ab * (1.0 - cur_ratio);
+			cur_best_a = 1.0 - cur_ab;
 			break;
 		}
 
@@ -270,9 +272,9 @@ static void dect_algo_cpu(int enhanced,
 	if (idx_adjust)
 		idx = idx_adjust - idx;
 
-	uint8_t best_a = (uint8_t)floor(tot_best_a * 255.0f);
-	uint8_t best_b = (uint8_t)floor(tot_best_b * 255.0f);
-	uint8_t best_c = (uint8_t)floor(tot_best_c * 255.0f);
+	uint8_t best_a = (uint8_t)floor(tot_best_a * 255.0);
+	uint8_t best_b = (uint8_t)floor(tot_best_b * 255.0);
+	uint8_t best_c = (uint8_t)floor(tot_best_c * 255.0);
 
 	x[idx] = best_a;
 	y[idx] = best_b;
