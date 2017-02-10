@@ -288,7 +288,7 @@ int _tmain(int argc, TCHAR *argv[])
 				alphaa, betaa, gammaa,
 				alphab, betab, gammab,
 				a, b, c_len,
-				do_rotate ? (c_len - 1) : 0);
+				do_rotate ? ((int)c_len - 1) : 0);
 
 			// attempt to write something out
 			uint32 iw, il, rps;
@@ -385,10 +385,10 @@ int _tmain(int argc, TCHAR *argv[])
 			ret = TIFFSetField(bf, TIFFTAG_SAMPLEFORMAT, 2);
 			assert(ret == 1);
 
-			TIFFWriteEncodedStrip(af, 0, a, c_len * 2);
+			TIFFWriteEncodedStrip(af, 0, a, (tsize_t)c_len * 2);
 			TIFFWriteDirectory(af);
 
-			TIFFWriteEncodedStrip(bf, 0, b, c_len * 2);
+			TIFFWriteEncodedStrip(bf, 0, b, (tsize_t)c_len * 2);
 			TIFFWriteDirectory(bf);
 
 			_TIFFfree(c);
@@ -454,7 +454,7 @@ int _tmain(int argc, TCHAR *argv[])
 				a, b, alphaa, betaa, gammaa,
 				alphab, betab, gammab,
 				x, y, z, a_len, min_step, m, merge_fact,
-				do_rotate ? (a_len - 1) : 0);
+				do_rotate ? ((int)a_len - 1) : 0);
 			if (algo_ret != 0)
 			{
 				std::cerr << "ERROR: DECT algorithm failed" << std::endl;
@@ -587,13 +587,13 @@ int _tmain(int argc, TCHAR *argv[])
 			ret = TIFFSetField(ef, TIFFTAG_SAMPLEFORMAT, 1);
 			assert(ret == 1);
 
-			TIFFWriteEncodedStrip(cf, 0, x, a_len);
+			TIFFWriteEncodedStrip(cf, 0, x, (tsize_t)a_len);
 			TIFFWriteDirectory(cf);
 
-			TIFFWriteEncodedStrip(df, 0, y, a_len);
+			TIFFWriteEncodedStrip(df, 0, y, (tsize_t)a_len);
 			TIFFWriteDirectory(df);
 
-			TIFFWriteEncodedStrip(ef, 0, z, a_len);
+			TIFFWriteEncodedStrip(ef, 0, z, (tsize_t)a_len);
 			TIFFWriteDirectory(ef);
 
 			_TIFFfree(a);
@@ -636,7 +636,7 @@ int _tmain(int argc, TCHAR *argv[])
 				ret = TIFFSetField(mf, TIFFTAG_SAMPLEFORMAT, 2);
 				assert(ret == 1);
 
-				TIFFWriteEncodedStrip(mf, 0, m, a_len * 2);
+				TIFFWriteEncodedStrip(mf, 0, m, (tsize_t)a_len * 2);
 				TIFFWriteDirectory(mf);
 
 				free(m);
