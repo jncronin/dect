@@ -32,9 +32,8 @@
 #include <iterator>
 #include <sstream>
 
-#include <tchar.h>
-
 #ifdef _MSC_VER
+#include <tchar.h>
 #include <Windows.h>
 #endif
 

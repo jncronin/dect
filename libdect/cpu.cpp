@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <math.h>
+#include <stddef.h>
 
 /* Algorithm written with a view to parallelizing with OpenCL
 a, b			- input images

@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <math.h>
+#include <stddef.h>
 
 /*
 	(1)         a * alphaa + b * betaa + c * gammaa = theta

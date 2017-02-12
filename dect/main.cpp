@@ -28,8 +28,17 @@
 #include <math.h>
 #include <iostream>
 
+#ifdef _MSC_VER
 #include <tchar.h>
 #include "XGetopt.h"
+#else
+#define _T
+#define TCHAR char
+#define _ttoi atoi
+#define _ttof atof
+#define _tmain main
+#include <getopt.h>
+#endif
 
 #include <libdect.h>
 
@@ -105,7 +114,7 @@ char *ascii(const TCHAR *s)
 	wcstombs_s(&size, ret, size, s, _TRUNCATE);
 	return ret;
 #else
-	return s;
+	return (char *)s;
 #endif
 }
 
@@ -149,9 +158,12 @@ int _tmain(int argc, TCHAR *argv[])
 
 	TCHAR *afname = NULL;
 	TCHAR *bfname = NULL;
-	TCHAR *xfname = _T("outputx.tiff");
-	TCHAR *yfname = _T("outputy.tiff");
-	TCHAR *zfname = _T("outputz.tiff");
+	TCHAR xfnamedef[] = _T("outputx.tiff");
+	TCHAR yfnamedef[] = _T("outputy.tiff");
+	TCHAR zfnamedef[] = _T("outputz.tiff");
+	TCHAR *xfname = xfnamedef;
+	TCHAR *yfname = yfnamedef;
+	TCHAR *zfname = zfnamedef;
 	TCHAR *mfname = NULL;
 	int do_rotate = 0;
 	int reconstitute = 0;
@@ -265,7 +277,6 @@ int _tmain(int argc, TCHAR *argv[])
 		assert(df);
 		assert(ef);
 
-		int frame_id = 0;
 		size_t c_len, d_len, e_len;
 
 		do
