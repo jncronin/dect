@@ -1,0 +1,2 @@
+#define HAS_OPENCL @OCL_FOUND@
+
