@@ -21,7 +21,9 @@
 
 #include <stdint.h>
 #include <iostream>
+#include "config.h"
 
+#if HAS_OPENCL
 int opencl_get_device_count();
 const char *opencl_get_device_name(int idx);
 
@@ -35,6 +37,18 @@ int dect_algo_opencl(int enhanced,
 	int16_t *m,
 	float mr,
 	int idx_adjust);
+#else
+int opencl_get_device_count()
+{
+	return 0;
+}
+
+const char *opencl_get_device_name(int idx)
+{
+	(void)idx;
+	return NULL;
+}
+#endif
 
 int dect_algo_cpu_iter(int enhanced,
 	const int16_t *a, const int16_t *b,
@@ -58,7 +72,16 @@ int dect_algo_simul(int enhanced,
 	float mr,
 	int idx_adjust);
 
+#if HAS_OPENCL
 int opencl_init(int platform, int enhanced);
+#else
+int opencl_init(int platform, int enhanced)
+{
+	(void)platform;
+	(void)enhanced;
+	return -1;
+}
+#endif
 
 int dect_getDeviceCount()
 {
@@ -110,6 +133,7 @@ int dect_process(
 			alphab, betab, gammab, x, y, z, outsize,
 			min_step, m, mr, idx_adjust);
 	default:
+#if HAS_OPENCL
 		auto ret = dect_algo_opencl(enhanced,
 			a, b, alphaa, betaa, gammaa,
 			alphab, betab, gammab, x, y, z, outsize,
@@ -124,6 +148,10 @@ int dect_process(
 				min_step, m, mr, idx_adjust);
 		}
 		return ret;
+#else
+		std::cerr << "ERROR: Unknown device ID" << std::endl;
+		return -1;
+#endif
 	}
 }
 
