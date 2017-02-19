@@ -220,7 +220,7 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
     parametersFormLayout.addRow("Enhanced quality (slower): ", self.enhanced)
     
     self.flip = qt.QCheckBox()
-    self.flip.setChecked(True)
+    self.flip.setChecked(False)
     parametersFormLayout.addRow("Flip output 180 degrees: ", self.flip)
 
     # Add vertical spacer
