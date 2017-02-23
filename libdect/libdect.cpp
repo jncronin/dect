@@ -21,7 +21,15 @@
 
 #include <stdint.h>
 #include <iostream>
+#ifndef _MSC_VER
 #include "config.h"
+#define EXPORT 
+#else
+#ifndef HAS_OPENCL
+#define HAS_OPENCL 1
+#endif
+#define EXPORT __declspec(dllexport)
+#endif
 
 #if HAS_OPENCL
 int opencl_get_device_count();
@@ -83,12 +91,12 @@ int opencl_init(int platform, int enhanced)
 }
 #endif
 
-int dect_getDeviceCount()
+EXPORT int dect_getDeviceCount()
 {
 	return 2 + opencl_get_device_count();
 }
 
-const char *dect_getDeviceName(int idx)
+EXPORT const char *dect_getDeviceName(int idx)
 {
 	switch (idx)
 	{
@@ -101,14 +109,14 @@ const char *dect_getDeviceName(int idx)
 	}
 }
 
-int dect_initDevice(int idx, int enhanced)
+EXPORT int dect_initDevice(int idx, int enhanced)
 {
 	if (idx >= 2)
 		return opencl_init(idx - 2, enhanced);
 	return 0;
 }
 
-int dect_process(
+EXPORT int dect_process(
 	int device_id, int enhanced,
 	const int16_t *a, const int16_t *b,
 	float alphaa, float betaa, float gammaa,
@@ -157,7 +165,7 @@ int dect_process(
 
 /* Create source images from processed images - for testing accuracy
 	of various algorithms */
-int dect_reconstitute(
+EXPORT int dect_reconstitute(
 	const uint8_t *x, const uint8_t *y, const uint8_t *z,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
