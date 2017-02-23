@@ -1,2 +1,2 @@
-#define HAS_OPENCL @OCL_FOUND@
+#define HAS_OPENCL 0@OCL_FOUND@
 
