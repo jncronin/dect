@@ -19,6 +19,12 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_library(dectlib STATIC ${LIBDECT_SOURCES})
 set_target_properties(dectlib PROPERTIES OUTPUT_NAME dect)
 
-install(TARGETS dectlib ARCHIVE DESTINATION lib)
+add_library(dectlibshared SHARED ${LIBDECT_SOURCES})
+set_target_properties(dectlibshared PROPERTIES OUTPUT_NAME dect)
+set_target_properties(dectlibshared PROPERTIES CXX_VISIBILITY_PRESET hidden)
+
+install(TARGETS dectlib dectlibshared
+	ARCHIVE DESTINATION lib
+	LIBRARY DESTINATION lib)
 install(FILES libdect.h DESTINATION include)
 

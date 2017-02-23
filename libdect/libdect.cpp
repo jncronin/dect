@@ -23,7 +23,11 @@
 #include <iostream>
 #ifndef _MSC_VER
 #include "config.h"
+#ifdef __GNUC__
+#define EXPORT __attribute__ ((visibility ("default")))
+#else
 #define EXPORT 
+#endif
 #else
 #ifndef HAS_OPENCL
 #define HAS_OPENCL 1
