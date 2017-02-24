@@ -109,7 +109,7 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(INTELOCLSDKROOT)lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>%(AdditionalDependencies);libtiff.lib</AdditionalDependencies>
+      <AdditionalDependencies>OpenCL.lib;%(AdditionalDependencies);libtiff.lib</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
