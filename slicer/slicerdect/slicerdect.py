@@ -163,6 +163,7 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
     self.outputa.addEnabled = True
     self.outputa.removeEnabled = True
     self.outputa.noneEnabled = True
+    self.outputa.renameEnabled = True
     self.outputa.showHidden = False
     self.outputa.showChildNodeTypes = False
     self.outputa.setMRMLScene( slicer.mrmlScene )
@@ -175,6 +176,7 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
     self.outputb.addEnabled = True
     self.outputb.removeEnabled = True
     self.outputb.noneEnabled = True
+    self.outputb.renameEnabled = True
     self.outputb.showHidden = False
     self.outputb.showChildNodeTypes = False
     self.outputb.setMRMLScene( slicer.mrmlScene )
@@ -187,6 +189,7 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
     self.outputc.addEnabled = True
     self.outputc.removeEnabled = True
     self.outputc.noneEnabled = True
+    self.outputc.renameEnabled = True
     self.outputc.showHidden = False
     self.outputc.showChildNodeTypes = False
     self.outputc.setMRMLScene( slicer.mrmlScene )
@@ -202,6 +205,7 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
     self.outputm.addEnabled = True
     self.outputm.removeEnabled = True
     self.outputm.noneEnabled = True
+    self.outputm.renameEnabled = True
     self.outputm.showHidden = False
     self.outputm.showChildNodeTypes = False
     self.outputm.setMRMLScene( slicer.mrmlScene )
