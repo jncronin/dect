@@ -69,18 +69,29 @@ static int quiet = 0;
 
 static int16_t *readTIFFDirectory(TIFF *f, size_t *buf_size)
 {
-	tdata_t buf;
+	char *buf;
 	tstrip_t strip;
-	buf = _TIFFmalloc(TIFFStripSize(f));
-	auto size = TIFFStripSize(f);
+	auto ssize = TIFFStripSize(f);
+	auto size = ssize * TIFFNumberOfStrips(f);
+	buf = (char *)_TIFFmalloc(size);
 	for (strip = 0; strip < TIFFNumberOfStrips(f); strip++)
-		TIFFReadEncodedStrip(f, strip, buf, (tsize_t)-1);
+	{
+		auto read = TIFFReadEncodedStrip(f, strip, &buf[strip * ssize], ssize);
+		assert(read == ssize);
+	}
+
+	int sf = SAMPLEFORMAT_UINT;
+	TIFFGetField(f, TIFFTAG_SAMPLEFORMAT, &sf);
 
 	int16_t *ret = (int16_t *)buf;
-	for (auto i = 0; i < size / 2; i++)
+
+	// handle different sample formats
+	switch(sf)
 	{
-		if (ret[i] >= 32768)
-			ret[i] = ret[i] - 65536;
+	case SAMPLEFORMAT_UINT:
+		for (unsigned int i = 0; i < size / 2; i++)
+			ret[i] = (int16_t)((int32_t)((uint16_t *)buf)[i] - 32768);
+		break;
 	}
 
 	*buf_size = (size_t)size / 2;
@@ -474,7 +485,7 @@ int _tmain(int argc, TCHAR *argv[])
 
 			// attempt to write something out
 			uint32 iw, il, rps;
-			uint16 o, comp;
+			uint16 o = ORIENTATION_TOPLEFT, comp;
 			uint16 spp = 1;
 			uint16 bps = 8;
 			uint16 pc = PLANARCONFIG_CONTIG;
@@ -486,7 +497,7 @@ int _tmain(int argc, TCHAR *argv[])
 			ret = TIFFGetField(af, TIFFTAG_IMAGELENGTH, &il);
 			assert(ret == 1);
 			ret = TIFFGetField(af, TIFFTAG_ORIENTATION, &o);
-			assert(ret == 1);
+			//assert(ret == 1);
 			ret = TIFFGetField(af, TIFFTAG_ROWSPERSTRIP, &rps);
 			assert(ret == 1);
 			ret = TIFFGetField(af, TIFFTAG_COMPRESSION, &comp);
@@ -517,10 +528,10 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			ret = TIFFSetField(cf, TIFFTAG_PLANARCONFIG, pc);
 			assert(ret == 1);
-			ret = TIFFSetField(cf, TIFFTAG_ROWSPERSTRIP, rps);
-			assert(ret == 1);
-			ret = TIFFSetField(cf, TIFFTAG_COMPRESSION, comp);
-			assert(ret == 1);
+			//ret = TIFFSetField(cf, TIFFTAG_ROWSPERSTRIP, rps);
+			//assert(ret == 1);
+			//ret = TIFFSetField(cf, TIFFTAG_COMPRESSION, comp);
+			//assert(ret == 1);
 			ret = TIFFSetField(cf, TIFFTAG_RESOLUTIONUNIT, ru);
 			assert(ret == 1);
 			ret = TIFFSetField(cf, TIFFTAG_PHOTOMETRIC, ph);
@@ -548,10 +559,10 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			ret = TIFFSetField(df, TIFFTAG_PLANARCONFIG, pc);
 			assert(ret == 1);
-			ret = TIFFSetField(df, TIFFTAG_ROWSPERSTRIP, rps);
-			assert(ret == 1);
-			ret = TIFFSetField(df, TIFFTAG_COMPRESSION, comp);
-			assert(ret == 1);
+			//ret = TIFFSetField(df, TIFFTAG_ROWSPERSTRIP, rps);
+			//assert(ret == 1);
+			//ret = TIFFSetField(df, TIFFTAG_COMPRESSION, comp);
+			//assert(ret == 1);
 			ret = TIFFSetField(df, TIFFTAG_RESOLUTIONUNIT, ru);
 			assert(ret == 1);
 			ret = TIFFSetField(df, TIFFTAG_PHOTOMETRIC, ph);
@@ -579,10 +590,10 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			ret = TIFFSetField(ef, TIFFTAG_PLANARCONFIG, pc);
 			assert(ret == 1);
-			ret = TIFFSetField(ef, TIFFTAG_ROWSPERSTRIP, rps);
-			assert(ret == 1);
-			ret = TIFFSetField(ef, TIFFTAG_COMPRESSION, comp);
-			assert(ret == 1);
+			//ret = TIFFSetField(ef, TIFFTAG_ROWSPERSTRIP, rps);
+			//assert(ret == 1);
+			//ret = TIFFSetField(ef, TIFFTAG_COMPRESSION, comp);
+			//assert(ret == 1);
 			ret = TIFFSetField(ef, TIFFTAG_RESOLUTIONUNIT, ru);
 			assert(ret == 1);
 			ret = TIFFSetField(ef, TIFFTAG_PHOTOMETRIC, ph);
