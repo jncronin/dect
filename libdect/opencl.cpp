@@ -47,6 +47,7 @@ static cl::Device device;
 static std::vector<cl::Device> devices;
 
 static int is_init = 0;
+static int use_double = 1;
 
 #define checkErr(err, name) \
 	if ((err) != CL_SUCCESS) { \
@@ -134,11 +135,21 @@ int opencl_init(int platform, int enhanced)
 	cl_context_properties cprops[3] = { CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[platform])(), 0 };
 
 	context = new cl::Context(
-		CL_DEVICE_TYPE_DEFAULT,
+		CL_DEVICE_TYPE_GPU,
 		cprops,
 		NULL,
 		NULL,
 		&err);
+
+	if (err != CL_SUCCESS)
+	{
+		context = new cl::Context(
+			CL_DEVICE_TYPE_DEFAULT,
+			cprops,
+			NULL,
+			NULL,
+			&err);
+	}
 
 	checkErr(err, "Context::Context()");
 
@@ -151,6 +162,18 @@ int opencl_init(int platform, int enhanced)
 	
 	program = new cl::Program(*context, source);
 	err = program->build(devices, "");
+
+	if (err != CL_SUCCESS)
+	{
+		auto new_ks = std::string("#define double float\n\n").append(ks);
+		cl::Program::Sources source2(
+			1,
+			std::make_pair(new_ks.c_str(), new_ks.length() + 1));
+
+		program = new cl::Program(*context, source2);
+		err = program->build(devices, "");
+		use_double = 0;
+	}
 	checkErr(err, "Program::build()");
 
 	kernel = new cl::Kernel(*program, enhanced == 3 ? "dect2" : "dect", &err);
@@ -161,11 +184,16 @@ int opencl_init(int platform, int enhanced)
 	
 	device = devices[0];
 
-	cl_uint native_double_width = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>();
+	if (use_double == 0)
+	{
+		printf("Warning: no double precision support in OpenCL device - potential for lack of accuracy\n");
+	}
+
+	/*cl_uint native_double_width = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>();
 	if (native_double_width == 0) {
 		printf("No double precision support in OpenCL device.\n");
 		return -1;
-	}
+	}*/
 
 	is_init = 1;
 	return 0;
@@ -237,17 +265,17 @@ int dect_algo_opencl(int enhanced,
 	checkErr(err, "Kernel::setArg(0)");
 	err = kernel->setArg(1, inb);
 	checkErr(err, "Kernel::setArg(1)");
-	err = kernel->setArg(2, (double)alphaa);
+	err = use_double ? kernel->setArg(2, (double)alphaa) : kernel->setArg(2, (float)alphaa);
 	checkErr(err, "Kernel::setArg(2)");
-	err = kernel->setArg(3, (double)betaa);
+	err = use_double ? kernel->setArg(3, (double)betaa) : kernel->setArg(3, (float)betaa);
 	checkErr(err, "Kernel::setArg(3)");
-	err = kernel->setArg(4, (double)gammaa);
+	err = use_double ? kernel->setArg(4, (double)gammaa) : kernel->setArg(4, (float)gammaa);
 	checkErr(err, "Kernel::setArg(4)");
-	err = kernel->setArg(5, (double)alphab);
+	err = use_double ? kernel->setArg(5, (double)alphab) : kernel->setArg(5, (float)alphab);
 	checkErr(err, "Kernel::setArg(5)");
-	err = kernel->setArg(6, (double)betab);
+	err = use_double ? kernel->setArg(6, (double)betab) : kernel->setArg(6, (float)betab);
 	checkErr(err, "Kernel::setArg(6)");
-	err = kernel->setArg(7, (double)gammab);
+	err = use_double ? kernel->setArg(7, (double)gammab) : kernel->setArg(7, (float)gammab);
 	checkErr(err, "Kernel::setArg(7)");
 	err = kernel->setArg(8, outx);
 	checkErr(err, "Kernel::setArg(8)");
@@ -255,11 +283,11 @@ int dect_algo_opencl(int enhanced,
 	checkErr(err, "Kernel::setArg(9)");
 	err = kernel->setArg(10, outz);
 	checkErr(err, "Kernel::setArg(10)");
-	err = kernel->setArg(11, (double)min_step);
+	err = use_double ? kernel->setArg(11, (double)min_step) : kernel->setArg(11, (float)min_step);
 	checkErr(err, "Kernel::setArg(11)");
 	err = kernel->setArg(12, outm);
 	checkErr(err, "Kernel::setArg(12)");
-	err = kernel->setArg(13, (double)mr);
+	err = use_double ? kernel->setArg(13, (double)mr) : kernel->setArg(13, (float)min_step);
 	checkErr(err, "Kernel::setArg(13)");
 	err = kernel->setArg(14, m ? 1 : 0);
 	checkErr(err, "Kernel::setArg(14)");
