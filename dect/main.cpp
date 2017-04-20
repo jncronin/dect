@@ -485,7 +485,7 @@ int _tmain(int argc, TCHAR *argv[])
 
 			// attempt to write something out
 			uint32 iw, il, rps;
-			uint16 o = ORIENTATION_TOPLEFT, comp;
+			uint16 o = ORIENTATION_TOPLEFT, comp = COMPRESSION_LZW;
 			uint16 spp = 1;
 			uint16 bps = 8;
 			uint16 pc = PLANARCONFIG_CONTIG;
@@ -500,8 +500,8 @@ int _tmain(int argc, TCHAR *argv[])
 			//assert(ret == 1);
 			ret = TIFFGetField(af, TIFFTAG_ROWSPERSTRIP, &rps);
 			assert(ret == 1);
-			ret = TIFFGetField(af, TIFFTAG_COMPRESSION, &comp);
-			assert(ret == 1);
+			//ret = TIFFGetField(af, TIFFTAG_COMPRESSION, &comp);
+			//assert(ret == 1);
 			ret = TIFFGetField(af, TIFFTAG_RESOLUTIONUNIT, &ru);
 			assert(ret == 1);
 			ret = TIFFGetField(af, TIFFTAG_PHOTOMETRIC, &ph);
@@ -530,8 +530,8 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			//ret = TIFFSetField(cf, TIFFTAG_ROWSPERSTRIP, rps);
 			//assert(ret == 1);
-			//ret = TIFFSetField(cf, TIFFTAG_COMPRESSION, comp);
-			//assert(ret == 1);
+			ret = TIFFSetField(cf, TIFFTAG_COMPRESSION, comp);
+			assert(ret == 1);
 			ret = TIFFSetField(cf, TIFFTAG_RESOLUTIONUNIT, ru);
 			assert(ret == 1);
 			ret = TIFFSetField(cf, TIFFTAG_PHOTOMETRIC, ph);
@@ -561,8 +561,8 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			//ret = TIFFSetField(df, TIFFTAG_ROWSPERSTRIP, rps);
 			//assert(ret == 1);
-			//ret = TIFFSetField(df, TIFFTAG_COMPRESSION, comp);
-			//assert(ret == 1);
+			ret = TIFFSetField(df, TIFFTAG_COMPRESSION, comp);
+			assert(ret == 1);
 			ret = TIFFSetField(df, TIFFTAG_RESOLUTIONUNIT, ru);
 			assert(ret == 1);
 			ret = TIFFSetField(df, TIFFTAG_PHOTOMETRIC, ph);
@@ -592,8 +592,8 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			//ret = TIFFSetField(ef, TIFFTAG_ROWSPERSTRIP, rps);
 			//assert(ret == 1);
-			//ret = TIFFSetField(ef, TIFFTAG_COMPRESSION, comp);
-			//assert(ret == 1);
+			ret = TIFFSetField(ef, TIFFTAG_COMPRESSION, comp);
+			assert(ret == 1);
 			ret = TIFFSetField(ef, TIFFTAG_RESOLUTIONUNIT, ru);
 			assert(ret == 1);
 			ret = TIFFSetField(ef, TIFFTAG_PHOTOMETRIC, ph);
