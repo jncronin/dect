@@ -83,6 +83,16 @@ void dect_algo_cpu(int enhanced,
 	double mr,
 	int idx_adjust)
 {
+#ifdef __GNUC__
+#ifdef __x86_64__
+	__builtin_assume_aligned(a, 16);
+	__builtin_assume_aligned(b, 16);
+	__builtin_assume_aligned(x, 16);
+	__builtin_assume_aligned(y, 16);
+	__builtin_assume_aligned(z, 16);
+	__builtin_assume_aligned(m, 16);
+#endif
+#endif
 	double dA = a[idx];
 	double dB = b[idx];
 

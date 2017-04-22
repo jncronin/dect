@@ -22,6 +22,7 @@
 // float version of cpu algorithm
 
 #include <math.h>
+#include <stddef.h>
 
 #define dect_algo_cpu dect_algo_cpuf
 #define dect_algo_cpu_iter dect_algo_cpuf_iter
