@@ -38,6 +38,7 @@
 #endif
 
 static int _use_single_fp = 0;
+static int _use_u16_output = 0;
 
 #if HAS_OPENCL
 int opencl_get_device_count();
@@ -47,7 +48,7 @@ int dect_algo_opencl(int enhanced,
 	const int16_t *a, const int16_t *b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
-	uint8_t *x, uint8_t *y, uint8_t *z,
+	void *x, void *y, void *z,
 	size_t outsize,
 	float min_step,
 	int16_t *m,
@@ -79,13 +80,49 @@ int dect_algo_cpu_iter(int enhanced,
 	float mr,
 	int idx_adjust);
 
-int dect_algo_cpuf_iter(int enhanced,
+int dect_algo_cpuf8_iter(int enhanced,
 	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
 	uint8_t * RESTRICT x,
 	uint8_t * RESTRICT y,
 	uint8_t * RESTRICT z,
+	size_t outsize,
+	float min_step,
+	int16_t * RESTRICT m,
+	float mr,
+	int idx_adjust);
+int dect_algo_cpuf16_iter(int enhanced,
+	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
+	float alphaa, float betaa, float gammaa,
+	float alphab, float betab, float gammab,
+	uint16_t * RESTRICT x,
+	uint16_t * RESTRICT y,
+	uint16_t * RESTRICT z,
+	size_t outsize,
+	float min_step,
+	int16_t * RESTRICT m,
+	float mr,
+	int idx_adjust);
+int dect_algo_cpud8_iter(int enhanced,
+	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
+	float alphaa, float betaa, float gammaa,
+	float alphab, float betab, float gammab,
+	uint8_t * RESTRICT x,
+	uint8_t * RESTRICT y,
+	uint8_t * RESTRICT z,
+	size_t outsize,
+	float min_step,
+	int16_t * RESTRICT m,
+	float mr,
+	int idx_adjust);
+int dect_algo_cpud16_iter(int enhanced,
+	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
+	float alphaa, float betaa, float gammaa,
+	float alphab, float betab, float gammab,
+	uint16_t * RESTRICT x,
+	uint16_t * RESTRICT y,
+	uint16_t * RESTRICT z,
 	size_t outsize,
 	float min_step,
 	int16_t * RESTRICT m,
@@ -104,13 +141,16 @@ int dect_algo_simul(int enhanced,
 	int idx_adjust);
 
 #if HAS_OPENCL
-int opencl_init(int platform, int enhanced, int use_single_fp);
+int opencl_init(int platform, int enhanced,
+	int use_single_fp, int use_u16_output);
 #else
-int opencl_init(int platform, int enhanced, int use_single_fp)
+int opencl_init(int platform, int enhanced,
+	int use_single_fp, int use_u16_output)
 {
 	(void)platform;
 	(void)enhanced;
 	(void)use_single_fp;
+	(void)use_u16_output;
 	return -1;
 }
 #endif
@@ -133,12 +173,70 @@ EXPORT const char *dect_getDeviceName(int idx)
 	}
 }
 
-EXPORT int dect_initDevice(int idx, int enhanced, int use_single_fp)
+EXPORT int dect_initDevice(int idx, int enhanced,
+	int use_single_fp, int use_u16_output)
 {
 	if (idx >= 2)
-		return opencl_init(idx - 2, enhanced, use_single_fp);
+		opencl_init(idx - 2, enhanced, use_single_fp,
+			use_u16_output);
 	_use_single_fp = use_single_fp;
+	_use_u16_output = use_u16_output;
 	return 0;
+}
+
+static int dect_algo_cpu_iter(int enhanced,
+	const int16_t *a, const int16_t *b,
+	float alphaa, float betaa, float gammaa,
+	float alphab, float betab, float gammab,
+	void *x, void *y, void *z,
+	size_t pix_count,
+	float min_step,
+	int16_t *m,
+	float mr,
+	int idx_adjust)
+{
+	if (_use_single_fp)
+	{
+		if (_use_u16_output)
+		{
+			return dect_algo_cpuf16_iter(enhanced,
+				a, b, alphaa, betaa, gammaa,
+				alphab, betab, gammab,
+				(uint16_t*)x, (uint16_t*)y, (uint16_t*)z,
+				pix_count,
+				min_step, m, mr, idx_adjust);
+		}
+		else
+		{
+			return dect_algo_cpuf8_iter(enhanced,
+				a, b, alphaa, betaa, gammaa,
+				alphab, betab, gammab,
+				(uint8_t*)x, (uint8_t*)y, (uint8_t*)z,
+				pix_count,
+				min_step, m, mr, idx_adjust);
+		}
+	}
+	else
+	{
+		if (_use_u16_output)
+		{
+			return dect_algo_cpud16_iter(enhanced,
+				a, b, alphaa, betaa, gammaa,
+				alphab, betab, gammab,
+				(uint16_t*)x, (uint16_t*)y, (uint16_t*)z,
+				pix_count,
+				min_step, m, mr, idx_adjust);
+		}
+		else
+		{
+			return dect_algo_cpud8_iter(enhanced,
+				a, b, alphaa, betaa, gammaa,
+				alphab, betab, gammab,
+				(uint8_t*)x, (uint8_t*)y, (uint8_t*)z,
+				pix_count,
+				min_step, m, mr, idx_adjust);
+		}
+	}
 }
 
 EXPORT int dect_process(
@@ -146,8 +244,8 @@ EXPORT int dect_process(
 	const int16_t *a, const int16_t *b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
-	uint8_t *x, uint8_t *y, uint8_t *z,
-	size_t outsize,
+	void *x, void *y, void *z,
+	size_t pix_count,
 	float min_step,
 	int16_t *m,
 	float mr,
@@ -156,26 +254,23 @@ EXPORT int dect_process(
 	switch (device_id)
 	{
 	case 0:
-		if(_use_single_fp)
-			return dect_algo_cpuf_iter(enhanced,
-				a, b, alphaa, betaa, gammaa,
-				alphab, betab, gammab, x, y, z, outsize,
-				min_step, m, mr, idx_adjust);
-		else
-			return dect_algo_cpuf_iter(enhanced,
-				a, b, alphaa, betaa, gammaa,
-				alphab, betab, gammab, x, y, z, outsize,
-				min_step, m, mr, idx_adjust);
+		return dect_algo_cpu_iter(enhanced,
+			a, b, alphaa, betaa, gammaa,
+			alphab, betab, gammab,
+			x, y, z,
+			pix_count,
+			min_step, m, mr, idx_adjust);
+		
 	case 1:
 		return dect_algo_simul(enhanced,
 			a, b, alphaa, betaa, gammaa,
-			alphab, betab, gammab, x, y, z, outsize,
+			alphab, betab, gammab, (uint8_t*)x, (uint8_t*)y, (uint8_t*)z, pix_count,
 			min_step, m, mr, idx_adjust);
 	default:
 #if HAS_OPENCL
 		auto ret = dect_algo_opencl(enhanced,
 			a, b, alphaa, betaa, gammaa,
-			alphab, betab, gammab, x, y, z, outsize,
+			alphab, betab, gammab, x, y, z, pix_count,
 			min_step, m, mr, idx_adjust);
 		if (ret != 0)
 		{
@@ -183,7 +278,7 @@ EXPORT int dect_process(
 
 			return dect_algo_cpu_iter(enhanced,
 				a, b, alphaa, betaa, gammaa,
-				alphab, betab, gammab, x, y, z, outsize,
+				alphab, betab, gammab, x, y, z, pix_count,
 				min_step, m, mr, idx_adjust);
 		}
 		return ret;

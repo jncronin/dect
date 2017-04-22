@@ -48,6 +48,7 @@ static std::vector<cl::Device> devices;
 
 static int is_init = 0;
 static int use_double = 1;
+static int use_u16 = 0;
 
 #define checkErr(err, name) \
 	if ((err) != CL_SUCCESS) { \
@@ -121,7 +122,8 @@ const char *opencl_get_device_name(int idx)
 	return NULL;
 }
 
-int opencl_init(int platform, int enhanced, int use_single_fp)
+int opencl_init(int platform, int enhanced, int use_single_fp,
+	int use_u16_output)
 {
 	cl_int err;
 	is_init = 0;
@@ -156,13 +158,32 @@ int opencl_init(int platform, int enhanced, int use_single_fp)
 	devices = context->getInfo<CL_CONTEXT_DEVICES>();
 	checkErr(devices.size() > 0 ? CL_SUCCESS : -1, "devices.size() > 0");
 
+	std::string f8_kern = std::string("#define FPTYPE float\n#define OTYPE uchar\n#define OTYPE_MAX 255.0\n").append(ks);
+	std::string f16_kern = std::string("#define FPTYPE float\n#define OTYPE ushort\n#define OTYPE_MAX 65535.0\n").append(ks);
+	std::string d8_kern = std::string("#define FPTYPE double\n#define OTYPE uchar\n#define OTYPE_MAX 255.0\n").append(ks);
+	std::string d16_kern = std::string("#define FPTYPE double\n#define OTYPE ushort\n#define OTYPE_MAX 65535.0\n").append(ks);
+	use_u16 = use_u16_output;
+
 	if (use_single_fp)
 		err = CL_BUILD_ERROR;	// force attempt to use single fp
 	else
 	{
+		const char *cstr;
+		size_t len;
+
+		if (use_u16_output)
+		{
+			cstr = d16_kern.c_str();
+			len = d16_kern.length();
+		}
+		else
+		{
+			cstr = d8_kern.c_str();
+			len = d8_kern.length();
+		}
 		cl::Program::Sources source(
 			1,
-			std::make_pair(ks.c_str(), ks.length() + 1));
+			std::make_pair(cstr, len + 1));
 
 		program = new cl::Program(*context, source);
 		err = program->build(devices, "");
@@ -170,10 +191,22 @@ int opencl_init(int platform, int enhanced, int use_single_fp)
 
 	if (err != CL_SUCCESS)
 	{
-		auto new_ks = std::string("#define double float\n\n").append(ks);
+		const char *cstr;
+		size_t len;
+
+		if (use_u16_output)
+		{
+			cstr = f16_kern.c_str();
+			len = f16_kern.length();
+		}
+		else
+		{
+			cstr = f8_kern.c_str();
+			len = f8_kern.length();
+		}
 		cl::Program::Sources source2(
 			1,
-			std::make_pair(new_ks.c_str(), new_ks.length() + 1));
+			std::make_pair(cstr, len + 1));
 
 		program = new cl::Program(*context, source2);
 		err = program->build(devices, "");
@@ -204,12 +237,21 @@ int opencl_init(int platform, int enhanced, int use_single_fp)
 	return 0;
 }
 
+static inline cl_int set_float_arg(cl::Kernel *kernel,
+	cl_uint index, float val)
+{
+	if (use_double)
+		return kernel->setArg(index, (double)val);
+	else
+		return kernel->setArg(index, (float)val);
+}
+
 int dect_algo_opencl(int enhanced,
 	const int16_t *a, const int16_t *b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
-	uint8_t *x, uint8_t *y, uint8_t *z,
-	size_t out_size,
+	void *x, void *y, void *z,
+	size_t pix_count,
 	float min_step,
 	int16_t *m,
 	float mr,
@@ -219,6 +261,10 @@ int dect_algo_opencl(int enhanced,
 
 	if (is_init == 0)
 		return -1;
+
+	auto out_size = pix_count;
+	if (use_u16)
+		out_size *= 2;
 
 	/* Build output buffers */
 	cl::Buffer outx(
@@ -247,7 +293,7 @@ int dect_algo_opencl(int enhanced,
 	cl::Buffer outm(
 		*context,
 		CL_MEM_WRITE_ONLY,
-		m ? out_size * 2 : sizeof(cl_mem),
+		m ? pix_count * 2 : sizeof(cl_mem),
 		NULL,
 		&err);
 	checkErr(err, "Buffer::Buffer()");
@@ -256,13 +302,13 @@ int dect_algo_opencl(int enhanced,
 	cl::Buffer ina(
 		*context,
 		CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-		out_size * 2,
+		pix_count * 2,
 		(void*)a,
 		&err);
 	cl::Buffer inb(
 		*context,
 		CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-		out_size * 2,
+		pix_count * 2,
 		(void*)b,
 		&err);
 
@@ -270,17 +316,17 @@ int dect_algo_opencl(int enhanced,
 	checkErr(err, "Kernel::setArg(0)");
 	err = kernel->setArg(1, inb);
 	checkErr(err, "Kernel::setArg(1)");
-	err = use_double ? kernel->setArg(2, (double)alphaa) : kernel->setArg(2, (float)alphaa);
+	err = set_float_arg(kernel, 2, alphaa);
 	checkErr(err, "Kernel::setArg(2)");
-	err = use_double ? kernel->setArg(3, (double)betaa) : kernel->setArg(3, (float)betaa);
+	err = set_float_arg(kernel, 3, betaa);
 	checkErr(err, "Kernel::setArg(3)");
-	err = use_double ? kernel->setArg(4, (double)gammaa) : kernel->setArg(4, (float)gammaa);
+	err = set_float_arg(kernel, 4, gammaa);
 	checkErr(err, "Kernel::setArg(4)");
-	err = use_double ? kernel->setArg(5, (double)alphab) : kernel->setArg(5, (float)alphab);
+	err = set_float_arg(kernel, 5, alphab);
 	checkErr(err, "Kernel::setArg(5)");
-	err = use_double ? kernel->setArg(6, (double)betab) : kernel->setArg(6, (float)betab);
+	err = set_float_arg(kernel, 6, betab);
 	checkErr(err, "Kernel::setArg(6)");
-	err = use_double ? kernel->setArg(7, (double)gammab) : kernel->setArg(7, (float)gammab);
+	err = set_float_arg(kernel, 7, gammab);
 	checkErr(err, "Kernel::setArg(7)");
 	err = kernel->setArg(8, outx);
 	checkErr(err, "Kernel::setArg(8)");
@@ -288,11 +334,11 @@ int dect_algo_opencl(int enhanced,
 	checkErr(err, "Kernel::setArg(9)");
 	err = kernel->setArg(10, outz);
 	checkErr(err, "Kernel::setArg(10)");
-	err = use_double ? kernel->setArg(11, (double)min_step) : kernel->setArg(11, (float)min_step);
+	err = set_float_arg(kernel, 11, min_step);
 	checkErr(err, "Kernel::setArg(11)");
 	err = kernel->setArg(12, outm);
 	checkErr(err, "Kernel::setArg(12)");
-	err = use_double ? kernel->setArg(13, (double)mr) : kernel->setArg(13, (float)min_step);
+	err = set_float_arg(kernel, 13, mr);
 	checkErr(err, "Kernel::setArg(13)");
 	err = kernel->setArg(14, m ? 1 : 0);
 	checkErr(err, "Kernel::setArg(14)");
@@ -305,7 +351,7 @@ int dect_algo_opencl(int enhanced,
 	err = queue->enqueueNDRangeKernel(
 		*kernel,
 		cl::NullRange,
-		cl::NDRange(out_size),
+		cl::NDRange(pix_count),
 		cl::NullRange,
 		NULL,
 		&event);

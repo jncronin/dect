@@ -72,15 +72,15 @@ __forceinline
 #endif
 void dect_algo_cpu(int enhanced,
 	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
-	double alphaa, double betaa, double gammaa,
-	double alphab, double betab, double gammab,
+	FPTYPE alphaa, FPTYPE betaa, FPTYPE gammaa,
+	FPTYPE alphab, FPTYPE betab, FPTYPE gammab,
 	int idx,
-	uint8_t * RESTRICT x,
-	uint8_t * RESTRICT y,
-	uint8_t * RESTRICT z,
-	double min_step,
+	OTYPE * RESTRICT x,
+	OTYPE * RESTRICT y,
+	OTYPE * RESTRICT z,
+	FPTYPE min_step,
 	int16_t * RESTRICT m,
-	double mr,
+	FPTYPE mr,
 	int idx_adjust)
 {
 #ifdef __GNUC__
@@ -93,12 +93,12 @@ void dect_algo_cpu(int enhanced,
 	__builtin_assume_aligned(m, 16);
 #endif
 #endif
-	double dA = a[idx];
-	double dB = b[idx];
+	FPTYPE dA = a[idx];
+	FPTYPE dB = b[idx];
 
-	double tot_best_a = 0.0;
-	double tot_best_b = 0.0;
-	double tot_best_c = 0.0;
+	FPTYPE tot_best_a = 0.0;
+	FPTYPE tot_best_b = 0.0;
+	FPTYPE tot_best_c = 0.0;
 
 	/* in the case of an enhanced algorithm, we do the same
 	as the standard but permutate a, b, and c through
@@ -114,13 +114,13 @@ void dect_algo_cpu(int enhanced,
 
 	for (int i = 0; i < enhanced; i++)
 	{
-		double cur_ratio = 0.5;
-		double cur_ab = 0.66;
-		double cur_step = 0.25;
-		double cur_error = 5000.0 * 5000.0;
+		FPTYPE cur_ratio = 0.5;
+		FPTYPE cur_ab = 0.66;
+		FPTYPE cur_step = 0.25;
+		FPTYPE cur_error = 5000.0 * 5000.0;
 
-		double calphaa, cbetaa, cgammaa;
-		double calphab, cbetab, cgammab;
+		FPTYPE calphaa, cbetaa, cgammaa;
+		FPTYPE calphab, cbetab, cgammab;
 
 		switch (i)
 		{
@@ -156,25 +156,25 @@ void dect_algo_cpu(int enhanced,
 		finding islands of solutions which aren't necessarily the best
 		solutions */
 
-		double best_err = 5000.0 * 5000.0;
-		double best_ab = 0.0;
-		double best_ratio = 0.0;
+		FPTYPE best_err = 5000.0 * 5000.0;
+		FPTYPE best_ab = 0.0;
+		FPTYPE best_ratio = 0.0;
 
-		for (double test_ab = 0.0; test_ab <= 1.0; test_ab += 0.1)
+		for (FPTYPE test_ab = 0.0; test_ab <= 1.0; test_ab += 0.1)
 		{
-			for (double test_ratio = 0.0; test_ratio <= 1.0; test_ratio += 0.1)
+			for (FPTYPE test_ratio = 0.0; test_ratio <= 1.0; test_ratio += 0.1)
 			{
-				double cur_a = test_ab * test_ratio;
-				double cur_b = test_ab * (1.0 - test_ratio);
-				double cur_c = 1.0 - cur_a - cur_b;
+				FPTYPE cur_a = test_ab * test_ratio;
+				FPTYPE cur_b = test_ab * (1.0 - test_ratio);
+				FPTYPE cur_c = 1.0 - cur_a - cur_b;
 
-				double dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
-				double dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
+				FPTYPE dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
+				FPTYPE dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
 
-				double dA_err = (double)pow(dA_est - dA, 2);
-				double dB_err = (double)pow(dB_est - dB, 2);
+				FPTYPE dA_err = (FPTYPE)pow(dA_est - dA, 2);
+				FPTYPE dB_err = (FPTYPE)pow(dB_est - dB, 2);
 
-				double tot_err = dA_err + dB_err;
+				FPTYPE tot_err = dA_err + dB_err;
 
 				if (tot_err < best_err)
 				{
@@ -192,13 +192,13 @@ void dect_algo_cpu(int enhanced,
 
 		while (cur_step >= min_step)
 		{
-			double min_err;
-			double min_ab;
-			double min_ratio;
+			FPTYPE min_err;
+			FPTYPE min_ab;
+			FPTYPE min_ratio;
 
 			for (int j = 0; j < 4; j++)
 			{
-				double new_ab, new_ratio;
+				FPTYPE new_ab, new_ratio;
 				switch (j)
 				{
 				case 0:
@@ -228,19 +228,19 @@ void dect_algo_cpu(int enhanced,
 				if (new_ratio > 1.0)
 					new_ratio = 1.0;
 
-				double cur_a = new_ab * new_ratio;
-				double cur_b = new_ab * (1.0 - new_ratio);
-				double cur_c = 1.0 - new_ab;
+				FPTYPE cur_a = new_ab * new_ratio;
+				FPTYPE cur_b = new_ab * (1.0 - new_ratio);
+				FPTYPE cur_c = 1.0 - new_ab;
 
-				double dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
-				double dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
+				FPTYPE dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
+				FPTYPE dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
 
-				//double dA_err = (double)pow(dA_est - dA, 2.0);
-				//double dB_err = (double)pow(dB_est - dB, 2.0);
-				double dA_err = (dA_est - dA) * (dA_est - dA);
-				double dB_err = (dB_est - dB) * (dB_est - dB);
+				//FPTYPE dA_err = (FPTYPE)pow(dA_est - dA, 2.0);
+				//FPTYPE dB_err = (FPTYPE)pow(dB_est - dB, 2.0);
+				FPTYPE dA_err = (dA_est - dA) * (dA_est - dA);
+				FPTYPE dB_err = (dB_est - dB) * (dB_est - dB);
 
-				double tot_err = dA_err + dB_err;
+				FPTYPE tot_err = dA_err + dB_err;
 
 				if (j == 0 || tot_err < min_err)
 				{
@@ -262,7 +262,7 @@ void dect_algo_cpu(int enhanced,
 			}
 		}
 
-		double cur_best_a, cur_best_b, cur_best_c;
+		FPTYPE cur_best_a, cur_best_b, cur_best_c;
 
 		switch (i)
 		{
@@ -298,9 +298,9 @@ void dect_algo_cpu(int enhanced,
 	if (idx_adjust)
 		idx = idx_adjust - idx;
 
-	uint8_t best_a = (uint8_t)floor(tot_best_a * 255.0);
-	uint8_t best_b = (uint8_t)floor(tot_best_b * 255.0);
-	uint8_t best_c = (uint8_t)floor(tot_best_c * 255.0);
+	OTYPE best_a = (OTYPE)floor(tot_best_a * OTYPE_MAX);
+	OTYPE best_b = (OTYPE)floor(tot_best_b * OTYPE_MAX);
+	OTYPE best_c = (OTYPE)floor(tot_best_c * OTYPE_MAX);
 
 	x[idx] = best_a;
 	y[idx] = best_b;
@@ -314,10 +314,10 @@ int dect_algo_cpu_iter(int enhanced,
 	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
-	uint8_t * RESTRICT x,
-	uint8_t * RESTRICT y,
-	uint8_t * RESTRICT z,
-	size_t outsize,
+	OTYPE * RESTRICT x,
+	OTYPE * RESTRICT y,
+	OTYPE * RESTRICT z,
+	size_t pix_count,
 	float min_step,
 	int16_t * RESTRICT m,
 	float mr,
@@ -326,7 +326,7 @@ int dect_algo_cpu_iter(int enhanced,
 #if _MSC_VER >= 1700
 #pragma loop (hint_parallel(0))
 #endif
-	for (auto i = 0; i < (int)outsize; i++)
+	for (auto i = 0; i < (int)pix_count; i++)
 		dect_algo_cpu(enhanced, a, b, alphaa, betaa, gammaa,
 			alphab, betab, gammab, i, x, y, z, min_step,
 			m, mr, idx_adjust);

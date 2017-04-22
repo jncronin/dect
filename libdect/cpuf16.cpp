@@ -21,11 +21,9 @@
 
 // float version of cpu algorithm
 
-#include <math.h>
-#include <stddef.h>
+#define dect_algo_cpu_iter dect_algo_cpuf16_iter
+#define FPTYPE float
+#define OTYPE uint16_t
+#define OTYPE_MAX 65535.0
 
-#define dect_algo_cpu dect_algo_cpuf
-#define dect_algo_cpu_iter dect_algo_cpuf_iter
-#define double float
-
-#include "cpu.cpp"
+#include "cpu_template.cpp"

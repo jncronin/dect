@@ -151,6 +151,7 @@ static void help(TCHAR *fname)
 	std::cout << " -r ratio            ratio of A:B to use for merged image (defaults to " << DEF_MERGEFACT << ")" << std::endl;
 	std::cout << " -F                  rotate output images 180 degrees" << std::endl;
 	std::cout << " -S                  use single precision floating point" << std::endl;
+	std::cout << " -U                  unsigned 16 bit output (default is u8)" << std::endl;
 	std::cout << " -q                  suppress progress output" << std::endl;
 	std::cout << " -R                  reconstitute source images (overwrites source)" << std::endl;
 	std::cout << " -h                  display this help" << std::endl;
@@ -180,9 +181,10 @@ int _tmain(int argc, TCHAR *argv[])
 	int do_rotate = 0;
 	int reconstitute = 0;
 	int use_single_fp = 0;
+	int use_u16_output = 0;
 
 	int g;
-	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZRS"))) != -1)
+	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZRSU"))) != -1)
 	{
 		switch (g)
 		{
@@ -264,6 +266,10 @@ int _tmain(int argc, TCHAR *argv[])
 
 		case 'S':
 			use_single_fp = 1;
+			break;
+
+		case 'U':
+			use_u16_output = 1;
 			break;
 
 		default:
@@ -457,7 +463,8 @@ int _tmain(int argc, TCHAR *argv[])
 
 		int frame_id = 0;
 
-		dect_initDevice(dect_algo, enhanced, use_single_fp);
+		dect_initDevice(dect_algo, enhanced, use_single_fp,
+			use_u16_output);
 
 		do
 		{
@@ -468,9 +475,13 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(b);
 			assert(a_len == b_len);
 
-			uint8_t *x = (uint8_t *)malloc(a_len);
-			uint8_t *y = (uint8_t *)malloc(a_len);
-			uint8_t *z = (uint8_t *)malloc(a_len);
+			auto out_size = a_len;
+			if (use_u16_output)
+				out_size = out_size * 2;
+
+			void *x = malloc(out_size);
+			void *y = malloc(out_size);
+			void *z = malloc(out_size);
 
 			int16_t *m = NULL;
 			if (mf)
@@ -494,6 +505,8 @@ int _tmain(int argc, TCHAR *argv[])
 			uint16 o = ORIENTATION_TOPLEFT, comp = COMPRESSION_LZW;
 			uint16 spp = 1;
 			uint16 bps = 8;
+			if (use_u16_output)
+				bps = 16;
 			uint16 pc = PLANARCONFIG_CONTIG;
 			uint16 ru, ph;
 			float xp = 0.0f, yp = 0.0f, xr, yr;
@@ -615,13 +628,13 @@ int _tmain(int argc, TCHAR *argv[])
 			ret = TIFFSetField(ef, TIFFTAG_SAMPLEFORMAT, 1);
 			assert(ret == 1);
 
-			TIFFWriteEncodedStrip(cf, 0, x, (tsize_t)a_len);
+			TIFFWriteEncodedStrip(cf, 0, x, (tsize_t)out_size);
 			TIFFWriteDirectory(cf);
 
-			TIFFWriteEncodedStrip(df, 0, y, (tsize_t)a_len);
+			TIFFWriteEncodedStrip(df, 0, y, (tsize_t)out_size);
 			TIFFWriteDirectory(df);
 
-			TIFFWriteEncodedStrip(ef, 0, z, (tsize_t)a_len);
+			TIFFWriteEncodedStrip(ef, 0, z, (tsize_t)out_size);
 			TIFFWriteDirectory(ef);
 
 			_TIFFfree(a);

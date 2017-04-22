@@ -22,19 +22,19 @@
 const std::string ks = R"OPENCL(
 
 kernel void dect(global short *a, global short *b,
-	const double alphaa, const double betaa, const double gammaa,
-	const double alphab, const double betab, const double gammab,
-	global uchar *x, global uchar *y, global uchar *z,
-	const double min_step,
+	const FPTYPE alphaa, const FPTYPE betaa, const FPTYPE gammaa,
+	const FPTYPE alphab, const FPTYPE betab, const FPTYPE gammab,
+	global OTYPE *x, global OTYPE *y, global OTYPE *z,
+	const FPTYPE min_step,
 	global short *m,
-	const double mr,
+	const FPTYPE mr,
 	const int do_merge,
 	const int idx_adjust)
 {
 	size_t idx = get_global_id(0);
 
-	double dA = (double)a[idx];
-	double dB = (double)b[idx];
+	FPTYPE dA = (FPTYPE)a[idx];
+	FPTYPE dB = (FPTYPE)b[idx];
 
 	/* First, iterate through ratio and ab at 0.1 intervals
 	to ensure we don't miss an approximate solution, then
@@ -42,27 +42,27 @@ kernel void dect(global short *a, global short *b,
 	finding islands of solutions which aren't necessarily the best
 	solutions */
 
-	double best_err = 1000000.0;
-	double best_ab = 0.66;
-	double best_ratio = 0.5;
+	FPTYPE best_err = 1000000.0;
+	FPTYPE best_ab = 0.66;
+	FPTYPE best_ratio = 0.5;
 
-	for (double test_ab = 0.0; test_ab <= 1.0; test_ab += 0.1)
+	for (FPTYPE test_ab = 0.0; test_ab <= 1.0; test_ab += 0.1)
 	{
-		for (double test_ratio = 0.0; test_ratio <= 1.0; test_ratio += 0.1)
+		for (FPTYPE test_ratio = 0.0; test_ratio <= 1.0; test_ratio += 0.1)
 		{
-			double cur_a = test_ab * test_ratio;
-			double cur_b = test_ab * (1.0 - test_ratio);
-			double cur_c = 1.0 - test_ab;
+			FPTYPE cur_a = test_ab * test_ratio;
+			FPTYPE cur_b = test_ab * (1.0 - test_ratio);
+			FPTYPE cur_c = 1.0 - test_ab;
 
-			double dA_est = alphaa * cur_a + betaa * cur_b + gammaa * cur_c;
-			double dB_est = alphab * cur_a + betab * cur_b + gammab * cur_c;
+			FPTYPE dA_est = alphaa * cur_a + betaa * cur_b + gammaa * cur_c;
+			FPTYPE dB_est = alphab * cur_a + betab * cur_b + gammab * cur_c;
 
-			//double dA_err = (double)pow(dA_est - dA, 2.0);
-			//double dB_err = (double)pow(dB_est - dB, 2.0);
-			double dA_err = (dA_est - dA) * (dA_est - dA);
-			double dB_err = (dB_est - dB) * (dB_est - dB);
+			//FPTYPE dA_err = (FPTYPE)pow(dA_est - dA, 2.0);
+			//FPTYPE dB_err = (FPTYPE)pow(dB_est - dB, 2.0);
+			FPTYPE dA_err = (dA_est - dA) * (dA_est - dA);
+			FPTYPE dB_err = (dB_est - dB) * (dB_est - dB);
 
-			double tot_err = dA_err + dB_err;
+			FPTYPE tot_err = dA_err + dB_err;
 
 			if (tot_err < best_err)
 			{
@@ -74,20 +74,20 @@ kernel void dect(global short *a, global short *b,
 	}
 
 	/* Now do an iterative search to find the best values */
-	double cur_error = 5000.0 * 5000.0;
-	double cur_step = 0.05;
-	double cur_ratio = best_ratio;
-	double cur_ab = best_ab;
+	FPTYPE cur_error = 5000.0 * 5000.0;
+	FPTYPE cur_step = 0.05;
+	FPTYPE cur_ratio = best_ratio;
+	FPTYPE cur_ab = best_ab;
 
 	while (cur_step >= min_step)
 	{
-		double min_err;
-		double min_ab;
-		double min_ratio;
+		FPTYPE min_err;
+		FPTYPE min_ab;
+		FPTYPE min_ratio;
 
 		for (int i = 0; i < 4; i++)
 		{
-			double new_ab, new_ratio;
+			FPTYPE new_ab, new_ratio;
 			switch(i)
 			{
 				case 0:
@@ -117,19 +117,19 @@ kernel void dect(global short *a, global short *b,
 			if(new_ratio > 1.0)
 				new_ratio = 1.0;
 
-			double cur_a = new_ab * new_ratio;
-			double cur_b = new_ab * (1.0 - new_ratio);
-			double cur_c = 1.0 - new_ab;
+			FPTYPE cur_a = new_ab * new_ratio;
+			FPTYPE cur_b = new_ab * (1.0 - new_ratio);
+			FPTYPE cur_c = 1.0 - new_ab;
 
-			double dA_est = alphaa * cur_a + betaa * cur_b + gammaa * cur_c;
-			double dB_est = alphab * cur_a + betab * cur_b + gammab * cur_c;
+			FPTYPE dA_est = alphaa * cur_a + betaa * cur_b + gammaa * cur_c;
+			FPTYPE dB_est = alphab * cur_a + betab * cur_b + gammab * cur_c;
 
-			//double dA_err = (double)pow(dA_est - dA, 2.0);
-			//double dB_err = (double)pow(dB_est - dB, 2.0);
-			double dA_err = (dA_est - dA) * (dA_est - dA);
-			double dB_err = (dB_est - dB) * (dB_est - dB);
+			//FPTYPE dA_err = (FPTYPE)pow(dA_est - dA, 2.0);
+			//FPTYPE dB_err = (FPTYPE)pow(dB_est - dB, 2.0);
+			FPTYPE dA_err = (dA_est - dA) * (dA_est - dA);
+			FPTYPE dB_err = (dB_est - dB) * (dB_est - dB);
 
-			double tot_err = dA_err + dB_err;
+			FPTYPE tot_err = dA_err + dB_err;
 
 			if (i == 0 || tot_err < min_err)
 			{
@@ -154,9 +154,9 @@ kernel void dect(global short *a, global short *b,
 	if(idx_adjust)
 		idx = idx_adjust - idx;
 
-	uchar best_a = (uchar)floor(cur_ab * cur_ratio * 255.0);
-	uchar best_b = (uchar)floor(cur_ab * (1.0 - cur_ratio) * 255.0);
-	uchar best_c = (uchar)floor((1.0 - cur_ab) * 255.0);
+	OTYPE best_a = (OTYPE)floor(cur_ab * cur_ratio * OTYPE_MAX);
+	OTYPE best_b = (OTYPE)floor(cur_ab * (1.0 - cur_ratio) * OTYPE_MAX);
+	OTYPE best_c = (OTYPE)floor((1.0 - cur_ab) * OTYPE_MAX);
 
 	x[idx] = best_a;
 	y[idx] = best_b;
@@ -167,23 +167,23 @@ kernel void dect(global short *a, global short *b,
 }
 
 kernel void dect2(global short *a, global short *b,
-	double alphaa, double betaa, double gammaa,
-	double alphab, double betab, double gammab,
-	global uchar *x, global uchar *y, global uchar *z,
-	double min_step,
+	FPTYPE alphaa, FPTYPE betaa, FPTYPE gammaa,
+	FPTYPE alphab, FPTYPE betab, FPTYPE gammab,
+	global OTYPE *x, global OTYPE *y, global OTYPE *z,
+	FPTYPE min_step,
 	global short *m,
-	double mr,
+	FPTYPE mr,
 	int do_merge,
 	int idx_adjust)
 {
 	size_t idx = get_global_id(0);
 
-	double dA = a[idx];
-	double dB = b[idx];
+	FPTYPE dA = a[idx];
+	FPTYPE dB = b[idx];
 
-	double tot_best_a = 0.0;
-	double tot_best_b = 0.0;
-	double tot_best_c = 0.0;
+	FPTYPE tot_best_a = 0.0;
+	FPTYPE tot_best_b = 0.0;
+	FPTYPE tot_best_c = 0.0;
 
 	/* this is dect() as above, but it permutates the
 	a, b and c values through the orders:
@@ -195,8 +195,8 @@ kernel void dect2(global short *a, global short *b,
 	Then average out at the end */
 	for(int i = 0; i < 3; i++)
 	{
-		double calphaa, cbetaa, cgammaa;
-		double calphab, cbetab, cgammab;
+		FPTYPE calphaa, cbetaa, cgammaa;
+		FPTYPE calphab, cbetab, cgammab;
 
 		switch(i)
 		{ 
@@ -232,25 +232,25 @@ kernel void dect2(global short *a, global short *b,
 		finding islands of solutions which aren't necessarily the best
 		solutions */
 
-		double best_err = 5000.0 * 5000.0;
-		double best_ab = 0.0;
-		double best_ratio = 0.0;
+		FPTYPE best_err = 5000.0 * 5000.0;
+		FPTYPE best_ab = 0.0;
+		FPTYPE best_ratio = 0.0;
 
-		for (double test_ab = 0.0; test_ab <= 1.0; test_ab += 0.1)
+		for (FPTYPE test_ab = 0.0; test_ab <= 1.0; test_ab += 0.1)
 		{
-			for (double test_ratio = 0.0; test_ratio <= 1.0; test_ratio += 0.1)
+			for (FPTYPE test_ratio = 0.0; test_ratio <= 1.0; test_ratio += 0.1)
 			{
-				double cur_a = test_ab * test_ratio;
-				double cur_b = test_ab * (1.0 - test_ratio);
-				double cur_c = 1.0 - cur_a - cur_b;
+				FPTYPE cur_a = test_ab * test_ratio;
+				FPTYPE cur_b = test_ab * (1.0 - test_ratio);
+				FPTYPE cur_c = 1.0 - cur_a - cur_b;
 
-				double dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
-				double dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
+				FPTYPE dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
+				FPTYPE dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
 
-				double dA_err = (dA_est - dA) * (dA_est - dA);
-				double dB_err = (dB_est - dB) * (dB_est - dB);
+				FPTYPE dA_err = (dA_est - dA) * (dA_est - dA);
+				FPTYPE dB_err = (dB_est - dB) * (dB_est - dB);
 
-				double tot_err = dA_err + dB_err;
+				FPTYPE tot_err = dA_err + dB_err;
 
 				if (tot_err < best_err)
 				{
@@ -262,17 +262,17 @@ kernel void dect2(global short *a, global short *b,
 		}
 
 		/* Now do an iterative search to find the best values */
-		double cur_step = 0.05;
+		FPTYPE cur_step = 0.05;
 
 		while (cur_step >= min_step)
 		{
-			double min_err;
-			double min_ab;
-			double min_ratio;
+			FPTYPE min_err;
+			FPTYPE min_ab;
+			FPTYPE min_ratio;
 
 			for (int j = 0; j < 4; j++)
 			{
-				double new_ab, new_ratio;
+				FPTYPE new_ab, new_ratio;
 				switch (j)
 				{
 				case 0:
@@ -302,19 +302,19 @@ kernel void dect2(global short *a, global short *b,
 				if (new_ratio > 1.0)
 					new_ratio = 1.0;
 
-				double cur_a = new_ab * new_ratio;
-				double cur_b = new_ab * (1.0 - new_ratio);
-				double cur_c = 1.0 - new_ab;
+				FPTYPE cur_a = new_ab * new_ratio;
+				FPTYPE cur_b = new_ab * (1.0 - new_ratio);
+				FPTYPE cur_c = 1.0 - new_ab;
 
-				double dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
-				double dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
+				FPTYPE dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
+				FPTYPE dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
 
-				//double dA_err = (double)pow(dA_est - dA, 2.0);
-				//double dB_err = (double)pow(dB_est - dB, 2.0);
-				double dA_err = (dA_est - dA) * (dA_est - dA);
-				double dB_err = (dB_est - dB) * (dB_est - dB);
+				//FPTYPE dA_err = (FPTYPE)pow(dA_est - dA, 2.0);
+				//FPTYPE dB_err = (FPTYPE)pow(dB_est - dB, 2.0);
+				FPTYPE dA_err = (dA_est - dA) * (dA_est - dA);
+				FPTYPE dB_err = (dB_est - dB) * (dB_est - dB);
 
-				double tot_err = dA_err + dB_err;
+				FPTYPE tot_err = dA_err + dB_err;
 
 				if (j == 0 || tot_err < min_err)
 				{
@@ -336,7 +336,7 @@ kernel void dect2(global short *a, global short *b,
 			}
 		}
 
-		double cur_best_a, cur_best_b, cur_best_c;
+		FPTYPE cur_best_a, cur_best_b, cur_best_c;
 
 		switch(i)
 		{
@@ -365,9 +365,9 @@ kernel void dect2(global short *a, global short *b,
 	if(idx_adjust)
 		idx = idx_adjust - idx;
 
-	uchar best_a = (uchar)floor(tot_best_a / 3.0 * 255.0);
-	uchar best_b = (uchar)floor(tot_best_b / 3.0 * 255.0);
-	uchar best_c = (uchar)floor(tot_best_c / 3.0 * 255.0);
+	OTYPE best_a = (OTYPE)floor(tot_best_a / 3.0 * OTYPE_MAX);
+	OTYPE best_b = (OTYPE)floor(tot_best_b / 3.0 * OTYPE_MAX);
+	OTYPE best_c = (OTYPE)floor(tot_best_c / 3.0 * OTYPE_MAX);
 
 	x[idx] = best_a;
 	y[idx] = best_b;

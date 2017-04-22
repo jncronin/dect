@@ -18,16 +18,25 @@
     <ClCompile Include="libdect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="cpu.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="opencl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="simul.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="cpuf.cpp">
+    <ClCompile Include="cpu_template.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cpuf8.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cpud8.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cpud16.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cpuf16.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
