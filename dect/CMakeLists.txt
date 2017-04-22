@@ -1,6 +1,6 @@
 find_package(PkgConfig REQUIRED)
 pkg_search_module(OCL OpenCL)
-pkg_search_module(TIFF libtiff-4)
+pkg_search_module(TIFF libtiff-4 REQUIRED)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
