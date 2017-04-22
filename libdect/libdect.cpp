@@ -73,6 +73,17 @@ int dect_algo_cpu_iter(int enhanced,
 	float mr,
 	int idx_adjust);
 
+int dect_algo_cpuf_iter(int enhanced,
+	const int16_t *a, const int16_t *b,
+	float alphaa, float betaa, float gammaa,
+	float alphab, float betab, float gammab,
+	uint8_t *x, uint8_t *y, uint8_t *z,
+	size_t outsize,
+	float min_step,
+	int16_t *m,
+	float mr,
+	int idx_adjust);
+
 int dect_algo_simul(int enhanced,
 	const int16_t *a, const int16_t *b,
 	float alphaa, float betaa, float gammaa,
@@ -135,7 +146,7 @@ EXPORT int dect_process(
 	switch (device_id)
 	{
 	case 0:
-		return dect_algo_cpu_iter(enhanced,
+		return dect_algo_cpuf_iter(enhanced,
 			a, b, alphaa, betaa, gammaa,
 			alphab, betab, gammab, x, y, z, outsize,
 			min_step, m, mr, idx_adjust);
