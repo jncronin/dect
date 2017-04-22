@@ -150,6 +150,7 @@ static void help(TCHAR *fname)
 	std::cout << " -M file             generate a merged image file too" << std::endl;
 	std::cout << " -r ratio            ratio of A:B to use for merged image (defaults to " << DEF_MERGEFACT << ")" << std::endl;
 	std::cout << " -F                  rotate output images 180 degrees" << std::endl;
+	std::cout << " -S                  use single precision floating point" << std::endl;
 	std::cout << " -q                  suppress progress output" << std::endl;
 	std::cout << " -R                  reconstitute source images (overwrites source)" << std::endl;
 	std::cout << " -h                  display this help" << std::endl;
@@ -178,9 +179,10 @@ int _tmain(int argc, TCHAR *argv[])
 	TCHAR *mfname = NULL;
 	int do_rotate = 0;
 	int reconstitute = 0;
+	int use_single_fp = 0;
 
 	int g;
-	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZR"))) != -1)
+	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZRS"))) != -1)
 	{
 		switch (g)
 		{
@@ -258,6 +260,10 @@ int _tmain(int argc, TCHAR *argv[])
 
 		case 'R':
 			reconstitute = 1;
+			break;
+
+		case 'S':
+			use_single_fp = 1;
 			break;
 
 		default:
@@ -451,7 +457,7 @@ int _tmain(int argc, TCHAR *argv[])
 
 		int frame_id = 0;
 
-		dect_initDevice(dect_algo, enhanced);
+		dect_initDevice(dect_algo, enhanced, use_single_fp);
 
 		do
 		{

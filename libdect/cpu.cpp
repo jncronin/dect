@@ -23,6 +23,15 @@
 #include <math.h>
 #include <stddef.h>
 
+#ifndef _MSC_VER
+#ifdef __GNUC__
+#define RESTRICT __restrict
+#endif
+#else
+#define RESTRICT __restrict
+#endif
+
+
 /* Algorithm written with a view to parallelizing with OpenCL
 a, b			- input images
 alphaa, alphab	- CT density of material 1 in image a and b
@@ -57,14 +66,20 @@ current point.
 
 When cur_step < min_step we stop.
 */
-static void dect_algo_cpu(int enhanced,
-	const int16_t *a, const int16_t *b,
+static inline
+#if _MSC_VER
+__forceinline 
+#endif
+void dect_algo_cpu(int enhanced,
+	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
 	double alphaa, double betaa, double gammaa,
 	double alphab, double betab, double gammab,
 	int idx,
-	uint8_t *x, uint8_t *y, uint8_t *z,
+	uint8_t * RESTRICT x,
+	uint8_t * RESTRICT y,
+	uint8_t * RESTRICT z,
 	double min_step,
-	int16_t *m,
+	int16_t * RESTRICT m,
 	double mr,
 	int idx_adjust)
 {
@@ -286,16 +301,21 @@ static void dect_algo_cpu(int enhanced,
 }
 
 int dect_algo_cpu_iter(int enhanced,
-	const int16_t *a, const int16_t *b,
+	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
-	uint8_t *x, uint8_t *y, uint8_t *z,
+	uint8_t * RESTRICT x,
+	uint8_t * RESTRICT y,
+	uint8_t * RESTRICT z,
 	size_t outsize,
 	float min_step,
-	int16_t *m,
+	int16_t * RESTRICT m,
 	float mr,
 	int idx_adjust)
 {
+#if _MSC_VER >= 1700
+#pragma loop (hint_parallel(0))
+#endif
 	for (auto i = 0; i < (int)outsize; i++)
 		dect_algo_cpu(enhanced, a, b, alphaa, betaa, gammaa,
 			alphab, betab, gammab, i, x, y, z, min_step,

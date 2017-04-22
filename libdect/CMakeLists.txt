@@ -4,7 +4,7 @@ pkg_search_module(OCL OpenCL)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
-set(LIBDECT_SOURCES "libdect.cpp" "cpu.cpp" "simul.cpp" )
+set(LIBDECT_SOURCES "libdect.cpp" "cpu.cpp" "simul.cpp" "cpuf.cpp" )
 if(OCL_FOUND)
 	set(LIBDECT_SOURCES ${LIBDECT_SOURCES} "opencl.cpp")
 endif(OCL_FOUND)

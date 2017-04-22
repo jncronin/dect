@@ -186,6 +186,7 @@
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <AdditionalOptions>/Qpar-report:2 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -212,8 +213,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="cpu.cpp" />
-    <ClCompile Include="cpuf.cpp" />
+    <ClCompile Include="cpu.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">/Qvec-report:2 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="cpuf.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">/Qvec-report:2 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
     <ClCompile Include="libdect.cpp" />
     <ClCompile Include="opencl.cpp" />
     <ClCompile Include="simul.cpp" />

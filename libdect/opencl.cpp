@@ -121,7 +121,7 @@ const char *opencl_get_device_name(int idx)
 	return NULL;
 }
 
-int opencl_init(int platform, int enhanced)
+int opencl_init(int platform, int enhanced, int use_single_fp)
 {
 	cl_int err;
 	is_init = 0;
@@ -156,12 +156,17 @@ int opencl_init(int platform, int enhanced)
 	devices = context->getInfo<CL_CONTEXT_DEVICES>();
 	checkErr(devices.size() > 0 ? CL_SUCCESS : -1, "devices.size() > 0");
 
-	cl::Program::Sources source(
-		1,
-		std::make_pair(ks.c_str(), ks.length() + 1));
-	
-	program = new cl::Program(*context, source);
-	err = program->build(devices, "");
+	if (use_single_fp)
+		err = CL_BUILD_ERROR;	// force attempt to use single fp
+	else
+	{
+		cl::Program::Sources source(
+			1,
+			std::make_pair(ks.c_str(), ks.length() + 1));
+
+		program = new cl::Program(*context, source);
+		err = program->build(devices, "");
+	}
 
 	if (err != CL_SUCCESS)
 	{
@@ -184,9 +189,9 @@ int opencl_init(int platform, int enhanced)
 	
 	device = devices[0];
 
-	if (use_double == 0)
+	if (use_double == 0 && use_single_fp == 0)
 	{
-		printf("Warning: no double precision support in OpenCL device - potential for lack of accuracy\n");
+		printf("Warning: no double precision support in OpenCL device - defaulting to single\n");
 	}
 
 	/*cl_uint native_double_width = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>();

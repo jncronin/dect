@@ -28,7 +28,7 @@
 
 int dect_getDeviceCount();
 const char *dect_getDeviceName(int idx);
-int dect_initDevice(int idx, int enhanced);
+int dect_initDevice(int idx, int enhanced, int use_single_fp);
 
 int dect_process(
 	int device_id,

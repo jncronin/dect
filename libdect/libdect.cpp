@@ -25,15 +25,19 @@
 #include "config.h"
 #ifdef __GNUC__
 #define EXPORT __attribute__ ((visibility ("default")))
+#define RESTRICT __restrict
 #else
 #define EXPORT 
 #endif
 #else
+#define RESTRICT __restrict
 #ifndef HAS_OPENCL
 #define HAS_OPENCL 1
 #endif
 #define EXPORT __declspec(dllexport)
 #endif
+
+static int _use_single_fp = 0;
 
 #if HAS_OPENCL
 int opencl_get_device_count();
@@ -63,24 +67,28 @@ const char *opencl_get_device_name(int idx)
 #endif
 
 int dect_algo_cpu_iter(int enhanced,
-	const int16_t *a, const int16_t *b,
+	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
-	uint8_t *x, uint8_t *y, uint8_t *z,
+	uint8_t * RESTRICT x,
+	uint8_t * RESTRICT y,
+	uint8_t * RESTRICT z,
 	size_t outsize,
 	float min_step,
-	int16_t *m,
+	int16_t * RESTRICT m,
 	float mr,
 	int idx_adjust);
 
 int dect_algo_cpuf_iter(int enhanced,
-	const int16_t *a, const int16_t *b,
+	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
-	uint8_t *x, uint8_t *y, uint8_t *z,
+	uint8_t * RESTRICT x,
+	uint8_t * RESTRICT y,
+	uint8_t * RESTRICT z,
 	size_t outsize,
 	float min_step,
-	int16_t *m,
+	int16_t * RESTRICT m,
 	float mr,
 	int idx_adjust);
 
@@ -96,12 +104,13 @@ int dect_algo_simul(int enhanced,
 	int idx_adjust);
 
 #if HAS_OPENCL
-int opencl_init(int platform, int enhanced);
+int opencl_init(int platform, int enhanced, int use_single_fp);
 #else
-int opencl_init(int platform, int enhanced)
+int opencl_init(int platform, int enhanced, int use_single_fp)
 {
 	(void)platform;
 	(void)enhanced;
+	(void)use_single_fp;
 	return -1;
 }
 #endif
@@ -124,10 +133,11 @@ EXPORT const char *dect_getDeviceName(int idx)
 	}
 }
 
-EXPORT int dect_initDevice(int idx, int enhanced)
+EXPORT int dect_initDevice(int idx, int enhanced, int use_single_fp)
 {
 	if (idx >= 2)
-		return opencl_init(idx - 2, enhanced);
+		return opencl_init(idx - 2, enhanced, use_single_fp);
+	_use_single_fp = use_single_fp;
 	return 0;
 }
 
@@ -146,10 +156,16 @@ EXPORT int dect_process(
 	switch (device_id)
 	{
 	case 0:
-		return dect_algo_cpuf_iter(enhanced,
-			a, b, alphaa, betaa, gammaa,
-			alphab, betab, gammab, x, y, z, outsize,
-			min_step, m, mr, idx_adjust);
+		if(_use_single_fp)
+			return dect_algo_cpuf_iter(enhanced,
+				a, b, alphaa, betaa, gammaa,
+				alphab, betab, gammab, x, y, z, outsize,
+				min_step, m, mr, idx_adjust);
+		else
+			return dect_algo_cpuf_iter(enhanced,
+				a, b, alphaa, betaa, gammaa,
+				alphab, betab, gammab, x, y, z, outsize,
+				min_step, m, mr, idx_adjust);
 	case 1:
 		return dect_algo_simul(enhanced,
 			a, b, alphaa, betaa, gammaa,
