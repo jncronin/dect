@@ -71,6 +71,17 @@ static int16_t *readTIFFDirectory(TIFF *f, size_t *buf_size)
 {
 	char *buf;
 	tstrip_t strip;
+
+	uint16 bps;
+	if (TIFFGetField(f, TIFFTAG_BITSPERSAMPLE, &bps))
+	{
+		if (bps != 16)
+		{
+			std::cerr << "Invalid input bits per sample in A: " << bps << std::endl;
+			abort();
+		}
+	}
+
 	auto ssize = TIFFStripSize(f);
 	auto size = ssize * TIFFNumberOfStrips(f);
 	buf = (char *)_TIFFmalloc(size);
@@ -501,16 +512,16 @@ int _tmain(int argc, TCHAR *argv[])
 			}
 
 			// attempt to write something out
-			uint32 iw, il, rps;
-			uint16 o = ORIENTATION_TOPLEFT, comp = COMPRESSION_LZW;
-			uint16 spp = 1;
+			int ret;
 			uint16 bps = 8;
 			if (use_u16_output)
 				bps = 16;
+			uint32 iw, il, rps;
+			uint16 o = ORIENTATION_TOPLEFT, comp = COMPRESSION_LZW;
+			uint16 spp = 1;
 			uint16 pc = PLANARCONFIG_CONTIG;
 			uint16 ru, ph;
 			float xp = 0.0f, yp = 0.0f, xr, yr;
-			int ret;
 			ret = TIFFGetField(af, TIFFTAG_IMAGEWIDTH, &iw);
 			assert(ret == 1);
 			ret = TIFFGetField(af, TIFFTAG_IMAGELENGTH, &il);
