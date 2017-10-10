@@ -37,9 +37,9 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
-  
-  def parseHelp(self):
-    # Get help output
+   
+  def dectChanged(self):
+    # respond to changes in the slicer executable name
     p = self.dectapp.text
     
     self.device.clear()
@@ -62,13 +62,52 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
       gammabre = 'c in file B \(defaults to (\-*[0-9]+)'
       mratiore = 'merged image \(defaults to (\-*[0-9]+\.[0-9]+)'
       
-      self.alphaa.text = re.search(alphaare, p4).group(1)
-      self.betaa.text = re.search(betaare, p4).group(1)
-      self.gammaa.text = re.search(gammaare, p4).group(1)
-      self.alphab.text = re.search(alphabre, p4).group(1)
-      self.betab.text = re.search(betabre, p4).group(1)
-      self.gammab.text = re.search(gammabre, p4).group(1)
-      self.mratio.text = re.search(mratiore, p4).group(1)
+      # if there are pre-stored persistent settings, use them
+      us = slicer.app.userSettings()
+      
+      aA = us.value("DECT/aA")
+      bA = us.value("DECT/bA")
+      cA = us.value("DECT/cA")
+      aB = us.value("DECT/aB")
+      bB = us.value("DECT/bB")
+      cB = us.value("DECT/cB")
+      m = us.value("DECT/m")
+      D = us.value("DECT/D")
+      
+      if(aA is not None):
+        self.alphaa.text = aA
+      else:
+        self.alphaa.text = re.search(alphaare, p4).group(1)
+        
+      if(bA is not None):
+        self.betaa.text = bA
+      else:
+        self.betaa.text = re.search(betaare, p4).group(1)
+        
+      if(cA is not None):
+        self.gammaa.text = cA
+      else:
+        self.gammaa.text = re.search(gammaare, p4).group(1)
+        
+      if(aB is not None):
+        self.alphab.text = aB
+      else:
+        self.alphab.text = re.search(alphabre, p4).group(1)
+        
+      if(bB is not None):
+        self.betab.text = bB
+      else:
+        self.betab.text = re.search(betabre, p4).group(1)
+        
+      if(cB is not None):
+        self.gammab.text = cB
+      else:
+        self.gammab.text = re.search(gammabre, p4).group(1)
+        
+      if(m is not None):
+        self.mratio.text = m
+      else:
+        self.mratio.text = re.search(mratiore, p4).group(1)
      
       v = re.search('Devices(\r\n [0-9]+: [^\r]+)+', p4)
       v2 = v.group(0).split('\r\n')
@@ -77,12 +116,22 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
         v3 = v2[i]
         self.device.addItem(re.search(' [0-9]+: ([\w\W]+)', v3).group(1))
         
-      return True
-    except:
-      return False    
+      if(D is not None):
+        didx = self.device.findText(D)
+        if(didx >= 0):
+          self.device.setCurrentIndex(didx)
+        
+      self.dectExeGood = True
+      
+      us.setValue("DECT/dect", p)
+    except Exception as excpt:
+      print excpt
+      self.dectExeGood = False
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
+    
+    self.dectExeGood = False
 
     # Instantiate and connect widgets ...
 
@@ -216,22 +265,36 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
     self.mratio.text = ''
     parametersFormLayout.addRow("Ratio (A:B) for merge: ", self.mratio)
     
+    us = slicer.app.userSettings()
+    
     # Add vertical spacer
     parametersFormLayout.addRow(qt.QLabel(" "), qt.QLabel(" "))
 
     self.enhanced = qt.QCheckBox()
-    self.enhanced.setChecked(True)
+    E = us.value("DECT/E")
+    if(E is not None and E == "false"):
+      self.enhanced.setChecked(False)
+    else:
+      self.enhanced.setChecked(True)
     parametersFormLayout.addRow("Enhanced quality (slower): ", self.enhanced)
     
     self.flip = qt.QCheckBox()
-    self.flip.setChecked(False)
+    F = us.value("DECT/F")
+    if(F is not None and F == "true"):
+      self.flip.setChecked(True)
+    else:
+      self.flip.setChecked(False)
     parametersFormLayout.addRow("Flip output 180 degrees: ", self.flip)
 
     # Add vertical spacer
     parametersFormLayout.addRow(qt.QLabel(" "), qt.QLabel(" "))
     
     self.dectapp = qt.QLineEdit()
-    self.dectapp.text = os.path.join(os.path.dirname(__file__), "dect.exe")
+    dectapp = us.value("DECT/dect")
+    if(dectapp is not None):
+      self.dectapp.text = dectapp
+    else:
+      self.dectapp.text = os.path.join(os.path.dirname(__file__), "dect.exe")
     parametersFormLayout.addRow("DECT executable:", self.dectapp)
 
     self.device = qt.QComboBox()
@@ -256,23 +319,46 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
     parametersFormLayout.addRow(self.progbar);
 
     # connections
-    self.parseHelp()
+    self.onDectChanged()
     self.applyButton.connect('clicked(bool)', self.onApplyButton)
     self.inputa.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.inputb.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
-    self.dectapp.textChanged.connect(self.onSelect)
-
+    self.alphaa.textChanged.connect(self.persistSettings)
+    self.betaa.textChanged.connect(self.persistSettings)
+    self.gammaa.textChanged.connect(self.persistSettings)
+    self.alphab.textChanged.connect(self.persistSettings)
+    self.betab.textChanged.connect(self.persistSettings)
+    self.gammab.textChanged.connect(self.persistSettings)
+    self.mratio.textChanged.connect(self.persistSettings)
+    self.device.currentIndexChanged.connect(self.persistSettings)
+   
+    self.dectapp.textChanged.connect(self.onDectChanged)
+    
     # Add vertical spacer
     self.layout.addStretch(1)
 
-    # Refresh Apply button state
-    self.onSelect()
+  def persistSettings(self):
+    us = slicer.app.userSettings()
+    us.setValue("DECT/aA", int(self.alphaa.text))
+    us.setValue("DECT/bA", int(self.betaa.text))
+    us.setValue("DECT/cA", int(self.gammaa.text))
+    us.setValue("DECT/aB", int(self.alphab.text))
+    us.setValue("DECT/bB", int(self.betab.text))
+    us.setValue("DECT/cB", int(self.gammab.text))
+    us.setValue("DECT/m", float(self.mratio.text))
+    us.setValue("DECT/E", self.enhanced.isChecked())
+    us.setValue("DECT/F", self.flip.isChecked())
+    us.setValue("DECT/D", self.device.currentText)
 
   def cleanup(self):
     pass
+    
+  def onDectChanged(self):
+    self.dectChanged()
+    self.onSelect()
 
   def onSelect(self):
-    self.applyButton.enabled = self.inputa.currentNode() and self.inputb.currentNode() and self.parseHelp()
+    self.applyButton.enabled = self.inputa.currentNode() and self.inputb.currentNode() and self.dectExeGood
 
   def onApplyButton(self):
     logic = slicerdectLogic()
@@ -316,6 +402,11 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
     slicer.util.saveNode(inputa, ia)
     slicer.util.saveNode(inputb, ib)
     
+    iasn = inputa.GetStorageNode()
+    ibsn = inputb.GetStorageNode()
+    iasn.SetFileName(iasn.GetFileName().replace(".tiff", ".nrrd"))
+    ibsn.SetFileName(ibsn.GetFileName().replace(".tiff", ".nrrd"))
+    
     startupinfo = None
     if os.name == 'nt':
       startupinfo = subprocess.STARTUPINFO()
@@ -337,21 +428,25 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
       sn = slicer.vtkMRMLVolumeArchetypeStorageNode()
       sn.SetFileName(ox)
       sn.ReadData(outputa)
+      sn.SetFileName(ox.replace(".tiff", ".nrrd"))
    
     if(outputb is not None):
       sn = slicer.vtkMRMLVolumeArchetypeStorageNode()
       sn.SetFileName(oy)
       sn.ReadData(outputb)
+      sn.SetFileName(ox.replace(".tiff", ".nrrd"))
    
     if(outputc is not None):
       sn = slicer.vtkMRMLVolumeArchetypeStorageNode()
       sn.SetFileName(oz)
       sn.ReadData(outputc)
+      sn.SetFileName(ox.replace(".tiff", ".nrrd"))
    
     if(outputm is not None):
       sn = slicer.vtkMRMLVolumeArchetypeStorageNode()
       sn.SetFileName(om)
       sn.ReadData(outputm)
+      sn.SetFileName(ox.replace(".tiff", ".nrrd"))
    
     logging.info('Processing completed')
     
