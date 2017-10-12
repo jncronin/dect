@@ -399,6 +399,9 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
     oz = os.path.join(td, "z.tiff")
     om = os.path.join(td, "m.tiff")
     
+    spacing = inputa.GetSpacing()
+    origin = inputa.GetOrigin()
+    
     slicer.util.saveNode(inputa, ia)
     slicer.util.saveNode(inputb, ib)
     
@@ -428,24 +431,32 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
       sn = slicer.vtkMRMLVolumeArchetypeStorageNode()
       sn.SetFileName(ox)
       sn.ReadData(outputa)
+      outputa.SetSpacing(spacing)
+      outputa.SetOrigin(origin)
       sn.SetFileName(ox.replace(".tiff", ".nrrd"))
    
     if(outputb is not None):
       sn = slicer.vtkMRMLVolumeArchetypeStorageNode()
       sn.SetFileName(oy)
       sn.ReadData(outputb)
+      outputb.SetSpacing(spacing)
+      outputb.SetOrigin(origin)
       sn.SetFileName(ox.replace(".tiff", ".nrrd"))
    
     if(outputc is not None):
       sn = slicer.vtkMRMLVolumeArchetypeStorageNode()
       sn.SetFileName(oz)
       sn.ReadData(outputc)
+      outputc.SetSpacing(spacing)
+      outputc.SetOrigin(origin)
       sn.SetFileName(ox.replace(".tiff", ".nrrd"))
    
     if(outputm is not None):
       sn = slicer.vtkMRMLVolumeArchetypeStorageNode()
       sn.SetFileName(om)
       sn.ReadData(outputm)
+      outputm.SetSpacing(spacing)
+      outputm.SetOrigin(origin)
       sn.SetFileName(ox.replace(".tiff", ".nrrd"))
    
     logging.info('Processing completed')
