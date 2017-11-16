@@ -39,6 +39,9 @@
 
 #include "../libdect/dect.cl"
 
+#define IN_LIBDECT
+#include "libdect.h"
+
 static cl::Context *context;
 static cl::Program *program;
 static cl::Kernel *kernel;
@@ -48,7 +51,7 @@ static std::vector<cl::Device> devices;
 
 static int is_init = 0;
 static int use_double = 1;
-static int use_u16 = 0;
+static libdect_output_type _otype = libdect_output_type::u8;
 
 #define checkErr(err, name) \
 	if ((err) != CL_SUCCESS) { \
@@ -123,7 +126,7 @@ const char *opencl_get_device_name(int idx)
 }
 
 int opencl_init(int platform, int enhanced, int use_single_fp,
-	int use_u16_output)
+	libdect_output_type otype)
 {
 	cl_int err;
 	is_init = 0;
@@ -162,7 +165,11 @@ int opencl_init(int platform, int enhanced, int use_single_fp,
 	std::string f16_kern = std::string("#define FPTYPE float\n#define OTYPE ushort\n#define OTYPE_MAX 65535.0\n").append(ks);
 	std::string d8_kern = std::string("#define FPTYPE double\n#define OTYPE uchar\n#define OTYPE_MAX 255.0\n").append(ks);
 	std::string d16_kern = std::string("#define FPTYPE double\n#define OTYPE ushort\n#define OTYPE_MAX 65535.0\n").append(ks);
-	use_u16 = use_u16_output;
+	std::string ff32_kern = std::string("#define FPTYPE float\n#define OTYPE float\n#define OTYPE_MAX 1.0\n#define FLOOR_FUNC \n").append(ks);
+	std::string df32_kern = std::string("#define FPTYPE double\n#define OTYPE float\n#define OTYPE_MAX 1.0\n#define FLOOR_FUNC \n").append(ks);
+	std::string ff64_kern = std::string("#define FPTYPE float\n#define OTYPE double\n#define OTYPE_MAX 1.0\n#define FLOOR_FUNC \n").append(ks);
+	std::string df64_kern = std::string("#define FPTYPE double\n#define OTYPE double\n#define OTYPE_MAX 1.0\n#define FLOOR_FUNC \n").append(ks);
+	_otype = otype;
 
 	if (use_single_fp)
 		err = CL_BUILD_ERROR;	// force attempt to use single fp
@@ -171,16 +178,28 @@ int opencl_init(int platform, int enhanced, int use_single_fp,
 		const char *cstr;
 		size_t len;
 
-		if (use_u16_output)
+		switch (otype)
 		{
-			cstr = d16_kern.c_str();
-			len = d16_kern.length();
+			case libdect_output_type::u8:
+				cstr = d8_kern.c_str();
+				len = d8_kern.length();
+				break;
+			case libdect_output_type::u16:
+				cstr = d16_kern.c_str();
+				len = d16_kern.length();
+				break;
+			case libdect_output_type::f32:
+				cstr = df32_kern.c_str();
+				len = df32_kern.length();
+				break;
+			case libdect_output_type::f64:
+				cstr = df64_kern.c_str();
+				len = df64_kern.length();
+				break;
+			default:
+				return -1;
 		}
-		else
-		{
-			cstr = d8_kern.c_str();
-			len = d8_kern.length();
-		}
+
 		cl::Program::Sources source(
 			1,
 			std::make_pair(cstr, len + 1));
@@ -194,15 +213,26 @@ int opencl_init(int platform, int enhanced, int use_single_fp,
 		const char *cstr;
 		size_t len;
 
-		if (use_u16_output)
+		switch (otype)
 		{
-			cstr = f16_kern.c_str();
-			len = f16_kern.length();
-		}
-		else
-		{
+		case libdect_output_type::u8:
 			cstr = f8_kern.c_str();
 			len = f8_kern.length();
+			break;
+		case libdect_output_type::u16:
+			cstr = f16_kern.c_str();
+			len = f16_kern.length();
+			break;
+		case libdect_output_type::f32:
+			cstr = ff32_kern.c_str();
+			len = ff32_kern.length();
+			break;
+		case libdect_output_type::f64:
+			cstr = ff64_kern.c_str();
+			len = ff64_kern.length();
+			break;
+		default:
+			return -1;
 		}
 		cl::Program::Sources source2(
 			1,
@@ -263,8 +293,18 @@ int dect_algo_opencl(int enhanced,
 		return -1;
 
 	auto out_size = pix_count;
-	if (use_u16)
+	switch (_otype)
+	{
+	case libdect_output_type::u16:
 		out_size *= 2;
+		break;
+	case libdect_output_type::f32:
+		out_size *= 4;
+		break;
+	case libdect_output_type::f64:
+		out_size *= 8;
+		break;
+	}
 
 	/* Build output buffers */
 	cl::Buffer outx(
@@ -398,7 +438,7 @@ int dect_algo_opencl(int enhanced,
 			outm,
 			CL_FALSE,
 			0,
-			out_size * 2,
+			pix_count * 2,
 			m,
 			NULL,
 			&eventm);

@@ -31,6 +31,9 @@
 #define RESTRICT __restrict
 #endif
 
+#ifndef FLOOR_FUNC
+#define FLOOR_FUNC floor
+#endif
 
 /* Algorithm written with a view to parallelizing with OpenCL
 a, b			- input images
@@ -298,9 +301,9 @@ void dect_algo_cpu(int enhanced,
 	if (idx_adjust)
 		idx = idx_adjust - idx;
 
-	OTYPE best_a = (OTYPE)floor(tot_best_a * OTYPE_MAX);
-	OTYPE best_b = (OTYPE)floor(tot_best_b * OTYPE_MAX);
-	OTYPE best_c = (OTYPE)floor(tot_best_c * OTYPE_MAX);
+	OTYPE best_a = (OTYPE)FLOOR_FUNC(tot_best_a * OTYPE_MAX);
+	OTYPE best_b = (OTYPE)FLOOR_FUNC(tot_best_b * OTYPE_MAX);
+	OTYPE best_c = (OTYPE)FLOOR_FUNC(tot_best_c * OTYPE_MAX);
 
 	x[idx] = best_a;
 	y[idx] = best_b;

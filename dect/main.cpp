@@ -161,8 +161,10 @@ static void help(TCHAR *fname)
 	std::cout << " -M file             generate a merged image file too" << std::endl;
 	std::cout << " -r ratio            ratio of A:B to use for merged image (defaults to " << DEF_MERGEFACT << ")" << std::endl;
 	std::cout << " -F                  rotate output images 180 degrees" << std::endl;
-	std::cout << " -S                  use single precision floating point" << std::endl;
+	std::cout << " -S                  use single precision floating point during calculations" << std::endl;
 	std::cout << " -U                  unsigned 16 bit output (default is u8)" << std::endl;
+	std::cout << " -s                  single precision floating point output (default is u8)" << std::endl;
+	std::cout << " -t                  double precision floating point output (default is u8)" << std::endl;
 	std::cout << " -q                  suppress progress output" << std::endl;
 	std::cout << " -R                  reconstitute source images (overwrites source)" << std::endl;
 	std::cout << " -h                  display this help" << std::endl;
@@ -192,10 +194,10 @@ int _tmain(int argc, TCHAR *argv[])
 	int do_rotate = 0;
 	int reconstitute = 0;
 	int use_single_fp = 0;
-	int use_u16_output = 0;
+	libdect_output_type otype = libdect_output_type::u8;
 
 	int g;
-	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZRSU"))) != -1)
+	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZRSUst"))) != -1)
 	{
 		switch (g)
 		{
@@ -280,7 +282,15 @@ int _tmain(int argc, TCHAR *argv[])
 			break;
 
 		case 'U':
-			use_u16_output = 1;
+			otype = libdect_output_type::u16;
+			break;
+
+		case 's':
+			otype = libdect_output_type::f32;
+			break;
+
+		case 't':
+			otype = libdect_output_type::f64;
 			break;
 
 		default:
@@ -475,7 +485,7 @@ int _tmain(int argc, TCHAR *argv[])
 		int frame_id = 0;
 
 		dect_initDevice(dect_algo, enhanced, use_single_fp,
-			use_u16_output);
+			otype);
 
 		do
 		{
@@ -487,8 +497,19 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(a_len == b_len);
 
 			auto out_size = a_len;
-			if (use_u16_output)
-				out_size = out_size * 2;
+
+			switch (otype)
+			{
+			case libdect_output_type::u16:
+				out_size *= 2;
+				break;
+			case libdect_output_type::f32:
+				out_size *= 4;
+				break;
+			case libdect_output_type::f64:
+				out_size *= 8;
+				break;
+			}
 
 			void *x = malloc(out_size);
 			void *y = malloc(out_size);
@@ -514,8 +535,21 @@ int _tmain(int argc, TCHAR *argv[])
 			// attempt to write something out
 			int ret;
 			uint16 bps = 8;
-			if (use_u16_output)
+			int sf = 1;
+			switch (otype)
+			{
+			case libdect_output_type::u16:
 				bps = 16;
+				break;
+			case libdect_output_type::f32:
+				bps = 32;
+				sf = 3;
+				break;
+			case libdect_output_type::f64:
+				bps = 64;
+				sf = 3;
+				break;
+			}
 			uint32 iw, il, rps;
 			uint16 o = ORIENTATION_TOPLEFT, comp = COMPRESSION_LZW;
 			uint16 spp = 1;
@@ -574,7 +608,7 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			ret = TIFFSetField(cf, TIFFTAG_YRESOLUTION, yr);
 			assert(ret == 1);
-			ret = TIFFSetField(cf, TIFFTAG_SAMPLEFORMAT, 1);
+			ret = TIFFSetField(cf, TIFFTAG_SAMPLEFORMAT, sf);
 			assert(ret == 1);
 
 			ret = TIFFSetField(df, TIFFTAG_IMAGEWIDTH, iw);
@@ -605,7 +639,7 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			ret = TIFFSetField(df, TIFFTAG_YRESOLUTION, yr);
 			assert(ret == 1);
-			ret = TIFFSetField(df, TIFFTAG_SAMPLEFORMAT, 1);
+			ret = TIFFSetField(df, TIFFTAG_SAMPLEFORMAT, sf);
 			assert(ret == 1);
 
 			ret = TIFFSetField(ef, TIFFTAG_IMAGEWIDTH, iw);
@@ -636,7 +670,7 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			ret = TIFFSetField(ef, TIFFTAG_YRESOLUTION, yr);
 			assert(ret == 1);
-			ret = TIFFSetField(ef, TIFFTAG_SAMPLEFORMAT, 1);
+			ret = TIFFSetField(ef, TIFFTAG_SAMPLEFORMAT, sf);
 			assert(ret == 1);
 
 			TIFFWriteEncodedStrip(cf, 0, x, (tsize_t)out_size);

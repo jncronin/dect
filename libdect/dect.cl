@@ -21,6 +21,10 @@
 
 const std::string ks = R"OPENCL(
 
+#ifndef FLOOR_FUNC
+#define FLOOR_FUNC floor
+#endif
+
 kernel void dect(global short *a, global short *b,
 	const FPTYPE alphaa, const FPTYPE betaa, const FPTYPE gammaa,
 	const FPTYPE alphab, const FPTYPE betab, const FPTYPE gammab,
@@ -365,9 +369,9 @@ kernel void dect2(global short *a, global short *b,
 	if(idx_adjust)
 		idx = idx_adjust - idx;
 
-	OTYPE best_a = (OTYPE)floor(tot_best_a / 3.0 * OTYPE_MAX);
-	OTYPE best_b = (OTYPE)floor(tot_best_b / 3.0 * OTYPE_MAX);
-	OTYPE best_c = (OTYPE)floor(tot_best_c / 3.0 * OTYPE_MAX);
+	OTYPE best_a = (OTYPE)FLOOR_FUNC(tot_best_a / 3.0 * OTYPE_MAX);
+	OTYPE best_b = (OTYPE)FLOOR_FUNC(tot_best_b / 3.0 * OTYPE_MAX);
+	OTYPE best_c = (OTYPE)FLOOR_FUNC(tot_best_c / 3.0 * OTYPE_MAX);
 
 	x[idx] = best_a;
 	y[idx] = best_b;

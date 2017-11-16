@@ -415,7 +415,7 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
       startupinfo = subprocess.STARTUPINFO()
       startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
       
-    pargs = [ p, '-A', ia, '-B', ib, '-a', str(alphaa), '-b', str(betaa), '-c', str(gammaa), '-d', str(alphab), '-e', str(betab), '-f', str(gammab), '-D', str(device), '-M', om, '-x', ox, '-y', oy, '-z', oz, '-r', str(mratio), '-Z' ]
+    pargs = [ p, '-A', ia, '-B', ib, '-a', str(alphaa), '-b', str(betaa), '-c', str(gammaa), '-d', str(alphab), '-e', str(betab), '-f', str(gammab), '-D', str(device), '-M', om, '-x', ox, '-y', oy, '-z', oz, '-r', str(mratio), '-Z', '-s' ]
     if(enhanced):
       pargs.append('-E')
     if(flip):

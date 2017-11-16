@@ -19,45 +19,12 @@
 * THE SOFTWARE.
 */
 
-#pragma once
+// float version of cpu algorithm
 
-#ifndef LIBDECT_H
-#define LIBDECT_H
+#define dect_algo_cpu_iter dect_algo_cpudf64_iter
+#define FPTYPE double
+#define OTYPE double
+#define OTYPE_MAX 1.0
+#define FLOOR_FUNC  
 
-#include <stdint.h>
-
-enum libdect_output_type
-{
-	u8, u16, f32, f64
-};
-
-#ifndef IN_LIBDECT
-int dect_getDeviceCount();
-const char *dect_getDeviceName(int idx);
-int dect_initDevice(int idx, int enhanced, int use_single_fp,
-	libdect_output_type otype);
-
-int dect_process(
-	int device_id,
-	int enhanced,
-	const int16_t *a, const int16_t *b,
-	float alphaa, float betaa, float gammaa,
-	float alphab, float betab, float gammab,
-	void *x, void *y, void *z,
-	size_t pix_count,
-	float min_step,
-	int16_t *m,
-	float mr,
-	int idx_adjust);
-
-int dect_reconstitute(
-	const uint8_t *x, const uint8_t *y, const uint8_t *z,
-	float alphaa, float betaa, float gammaa,
-	float alphab, float betab, float gammab,
-	int16_t *a, int16_t *b,
-	size_t outsize,
-	int idx_adjust);
-
-#endif
-
-#endif
+#include "cpu_template.cpp"
