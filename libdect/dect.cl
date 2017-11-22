@@ -158,9 +158,9 @@ kernel void dect(global short *a, global short *b,
 	if(idx_adjust)
 		idx = idx_adjust - idx;
 
-	OTYPE best_a = (OTYPE)floor(cur_ab * cur_ratio * OTYPE_MAX);
-	OTYPE best_b = (OTYPE)floor(cur_ab * (1.0 - cur_ratio) * OTYPE_MAX);
-	OTYPE best_c = (OTYPE)floor((1.0 - cur_ab) * OTYPE_MAX);
+	OTYPE best_a = (OTYPE)FLOOR_FUNC(cur_ab * cur_ratio * OTYPE_MAX);
+	OTYPE best_b = (OTYPE)FLOOR_FUNC(cur_ab * (1.0 - cur_ratio) * OTYPE_MAX);
+	OTYPE best_c = (OTYPE)FLOOR_FUNC((1.0 - cur_ab) * OTYPE_MAX);
 
 	x[idx] = best_a;
 	y[idx] = best_b;
