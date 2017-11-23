@@ -203,7 +203,14 @@ class DectExplorerLogic(ScriptedLoadableModuleLogic):
     
     ovol.SetSpacing(ospacing)
     ovol.SetOrigin([r[1][0][0], r[1][1][0], 0])
-    ovol.GetDisplayNode().SetAndObserveColorNodeID(slicer.util.getNode("Rainbow").GetID())
+    
+    dn = ovol.GetDisplayNode()
+    if not dn:
+      import vtk
+      dn = slicer.vtkMRMLScalarVolumeDisplayNode()
+      slicer.mrmlScene.AddNode(dn)
+      ovol.SetAndObserveDisplayNodeID(dn.GetID())
+    dn.SetAndObserveColorNodeID(slicer.util.getNode("Rainbow").GetID())
     
     ovol.StorableModified()
     ovol.Modified()
