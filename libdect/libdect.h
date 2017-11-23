@@ -35,6 +35,7 @@ enum libdect_output_type
 int dect_getDeviceCount();
 const char *dect_getDeviceName(int idx);
 int dect_initDevice(int idx, int enhanced, int use_single_fp,
+	int use_certainties,
 	libdect_output_type otype);
 
 int dect_process(
@@ -48,6 +49,8 @@ int dect_process(
 	float min_step,
 	int16_t *m,
 	float mr,
+	void *c,
+	float c_factor,
 	int idx_adjust);
 
 int dect_reconstitute(

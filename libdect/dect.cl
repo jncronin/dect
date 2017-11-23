@@ -381,4 +381,121 @@ kernel void dect2(global short *a, global short *b,
 		m[idx] = (short)(dA * mr + dB * (1.0 - mr));
 }
 
+kernel void dect3(global short *a, global short *b,
+	const FPTYPE alphaa, const FPTYPE betaa, const FPTYPE gammaa,
+	const FPTYPE alphab, const FPTYPE betab, const FPTYPE gammab,
+	global OTYPE *x, global OTYPE *y, global OTYPE *z,
+	const FPTYPE min_step,
+	global short *m,
+	const FPTYPE mr,
+	const int do_merge,
+	global OTYPE *c,
+	const FPTYPE c_factor,
+	const int idx_adjust)
+{
+	size_t idx = get_global_id(0);
+
+	FPTYPE dA = (FPTYPE)a[idx];
+	FPTYPE dB = (FPTYPE)b[idx];
+
+	/* Iterate through at min_step intervals, find the best solution and the mean error */
+	FPTYPE best_err = 1000000.0;
+	FPTYPE best_ab = 0.66;
+	FPTYPE best_ratio = 0.5;
+	FPTYPE total_error = 0.0;
+	FPTYPE samples = (1.0/min_step + 1.0) * (1.0/min_step + 1.0);
+
+	for (FPTYPE test_ab = 0.0; test_ab <= 1.0; test_ab += min_step)
+	{
+		for (FPTYPE test_ratio = 0.0; test_ratio <= 1.0; test_ratio += min_step)
+		{
+			FPTYPE cur_a = test_ab * test_ratio;
+			FPTYPE cur_b = test_ab * (1.0 - test_ratio);
+			FPTYPE cur_c = 1.0 - test_ab;
+
+			FPTYPE dA_est = alphaa * cur_a + betaa * cur_b + gammaa * cur_c;
+			FPTYPE dB_est = alphab * cur_a + betab * cur_b + gammab * cur_c;
+
+			FPTYPE dA_err = (dA_est - dA) * (dA_est - dA);
+			FPTYPE dB_err = (dB_est - dB) * (dB_est - dB);
+
+			FPTYPE tot_err = dA_err + dB_err;
+
+			if (tot_err < best_err)
+			{
+				best_err = tot_err;
+				best_ab = test_ab;
+				best_ratio = test_ratio;
+			}
+
+			total_error += tot_err;
+		}
+	}
+	FPTYPE mean = total_error / samples;
+
+	/* Iterate through again to determine the standard deviation */
+	FPTYPE total_var = 0.0;
+	
+	for (FPTYPE test_ab = 0.0; test_ab <= 1.0; test_ab += min_step)
+	{
+		for (FPTYPE test_ratio = 0.0; test_ratio <= 1.0; test_ratio += min_step)
+		{
+			FPTYPE cur_a = test_ab * test_ratio;
+			FPTYPE cur_b = test_ab * (1.0 - test_ratio);
+			FPTYPE cur_c = 1.0 - test_ab;
+
+			FPTYPE dA_est = alphaa * cur_a + betaa * cur_b + gammaa * cur_c;
+			FPTYPE dB_est = alphab * cur_a + betab * cur_b + gammab * cur_c;
+
+			FPTYPE dA_err = (dA_est - dA) * (dA_est - dA);
+			FPTYPE dB_err = (dB_est - dB) * (dB_est - dB);
+
+			FPTYPE tot_err = dA_err + dB_err;
+			FPTYPE cur_var = (tot_err - mean) * (tot_err - mean);
+			total_var += cur_var;
+		}
+	}
+	FPTYPE sd = sqrt(total_var / samples);
+
+	/* Iterate through again to count the number of samples within c_factor SDs of the minimum */
+	int c_count = 0;
+	FPTYPE threshold = best_err + sd * c_factor;
+	for (FPTYPE test_ab = 0.0; test_ab <= 1.0; test_ab += min_step)
+	{
+		for (FPTYPE test_ratio = 0.0; test_ratio <= 1.0; test_ratio += min_step)
+		{
+			FPTYPE cur_a = test_ab * test_ratio;
+			FPTYPE cur_b = test_ab * (1.0 - test_ratio);
+			FPTYPE cur_c = 1.0 - test_ab;
+
+			FPTYPE dA_est = alphaa * cur_a + betaa * cur_b + gammaa * cur_c;
+			FPTYPE dB_est = alphab * cur_a + betab * cur_b + gammab * cur_c;
+
+			FPTYPE dA_err = (dA_est - dA) * (dA_est - dA);
+			FPTYPE dB_err = (dB_est - dB) * (dB_est - dB);
+
+			FPTYPE tot_err = dA_err + dB_err;
+
+			if (tot_err <= threshold)
+			{
+				c_count++;
+			}
+		}
+	}
+
+	/* Output the best values */
+	OTYPE best_a = (OTYPE)FLOOR_FUNC(best_ab * best_ratio * OTYPE_MAX);
+	OTYPE best_b = (OTYPE)FLOOR_FUNC(best_ab * (1.0 - best_ratio) * OTYPE_MAX);
+	OTYPE best_c = (OTYPE)FLOOR_FUNC((1.0 - best_ab) * OTYPE_MAX);
+
+	x[idx] = best_a;
+	y[idx] = best_b;
+	z[idx] = best_c;
+
+	c[idx] = (OTYPE)FLOOR_FUNC((FPTYPE)c_count * OTYPE_MAX / samples);
+
+	if(do_merge)
+		m[idx] = (short)(dA * mr + dB * (1.0 - mr));
+}
+
 )OPENCL";

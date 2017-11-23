@@ -56,6 +56,8 @@ int dect_algo;
 #define DEF_MINSTEP 0.001f
 #define DEF_MERGEFACT 0.5f
 
+#define DEF_C_FACTOR 1.2f
+
 static float alphaa = DEF_ALPHAA;
 static float betaa = DEF_BETAA;
 static float gammaa = DEF_GAMMAA;
@@ -66,6 +68,7 @@ static float min_step = DEF_MINSTEP;
 int enhanced = 1;
 static float merge_fact = DEF_MERGEFACT;
 static int quiet = 0;
+static float c_factor = DEF_C_FACTOR;
 
 static int16_t *readTIFFDirectory(TIFF *f, size_t *buf_size)
 {
@@ -191,13 +194,14 @@ int _tmain(int argc, TCHAR *argv[])
 	TCHAR *yfname = yfnamedef;
 	TCHAR *zfname = zfnamedef;
 	TCHAR *mfname = NULL;
+	TCHAR *cfname = NULL;
 	int do_rotate = 0;
 	int reconstitute = 0;
 	int use_single_fp = 0;
 	libdect_output_type otype = libdect_output_type::u8;
 
 	int g;
-	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZRSUst"))) != -1)
+	while ((g = getopt(argc, argv, _T("qA:B:x:y:z:D:a:b:c:d:e:f:g:hm:EM:r:FZRSUstC:u:"))) != -1)
 	{
 		switch (g)
 		{
@@ -255,6 +259,14 @@ int _tmain(int argc, TCHAR *argv[])
 
 		case 'M':
 			mfname = optarg;
+			break;
+
+		case 'C':
+			cfname = optarg;
+			break;
+
+		case 'u':
+			c_factor = (float)_ttof(optarg);
 			break;
 
 		case 'r':
@@ -475,6 +487,9 @@ int _tmain(int argc, TCHAR *argv[])
 		TIFF *mf = NULL;
 		if (mfname)
 			mf = TIFFOpen(ascii(mfname), "w");
+		TIFF *Cf = NULL;
+		if (cfname)
+			Cf = TIFFOpen(ascii(cfname), "w");
 
 		assert(af);
 		assert(bf);
@@ -484,7 +499,7 @@ int _tmain(int argc, TCHAR *argv[])
 
 		int frame_id = 0;
 
-		dect_initDevice(dect_algo, enhanced, use_single_fp,
+		dect_initDevice(dect_algo, enhanced, use_single_fp, cfname ? 1 : 0,
 			otype);
 
 		do
@@ -519,12 +534,17 @@ int _tmain(int argc, TCHAR *argv[])
 			if (mf)
 				m = (int16_t *)malloc(a_len * 2);
 
+			void *c = NULL;
+			if (Cf)
+				c = malloc(out_size);
+
 			// run the algorithm
 			auto algo_ret = dect_process(
 				dect_algo, enhanced,
 				a, b, alphaa, betaa, gammaa,
 				alphab, betab, gammab,
 				x, y, z, a_len, min_step, m, merge_fact,
+				c, c_factor,
 				do_rotate ? ((int)a_len - 1) : 0);
 			if (algo_ret != 0)
 			{
@@ -727,6 +747,43 @@ int _tmain(int argc, TCHAR *argv[])
 
 				free(m);
 			}
+			if (c)
+			{
+				ret = TIFFSetField(Cf, TIFFTAG_IMAGEWIDTH, iw);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_IMAGELENGTH, il);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_SAMPLESPERPIXEL, spp);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_BITSPERSAMPLE, bps);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_ORIENTATION, o);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_PLANARCONFIG, pc);
+				assert(ret == 1);
+				//ret = TIFFSetField(df, TIFFTAG_ROWSPERSTRIP, rps);
+				//assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_COMPRESSION, comp);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_RESOLUTIONUNIT, ru);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_PHOTOMETRIC, ph);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_XPOSITION, xp);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_YPOSITION, yp);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_XRESOLUTION, xr);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_YRESOLUTION, yr);
+				assert(ret == 1);
+				ret = TIFFSetField(Cf, TIFFTAG_SAMPLEFORMAT, sf);
+				assert(ret == 1);
+				TIFFWriteEncodedStrip(Cf, 0, c, (tsize_t)out_size);
+				TIFFWriteDirectory(Cf);
+
+				free(c);
+			}
 
 			switch (quiet)
 			{
@@ -750,6 +807,11 @@ int _tmain(int argc, TCHAR *argv[])
 		{
 			TIFFFlush(mf);
 			TIFFClose(mf);
+		}
+		if (Cf)
+		{
+			TIFFFlush(Cf);
+			TIFFClose(Cf);
 		}
 
 		TIFFClose(af);

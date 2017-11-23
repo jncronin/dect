@@ -51,6 +51,7 @@ static std::vector<cl::Device> devices;
 
 static int is_init = 0;
 static int use_double = 1;
+static int do_certainties = 0;
 static libdect_output_type _otype = libdect_output_type::u8;
 
 #define checkErr(err, name) \
@@ -126,10 +127,11 @@ const char *opencl_get_device_name(int idx)
 }
 
 int opencl_init(int platform, int enhanced, int use_single_fp,
-	libdect_output_type otype)
+	libdect_output_type otype, int use_certainties)
 {
 	cl_int err;
 	is_init = 0;
+	do_certainties = use_certainties;
 
 	std::vector<cl::Platform> platformList;
 	cl::Platform::get(&platformList);
@@ -244,7 +246,7 @@ int opencl_init(int platform, int enhanced, int use_single_fp,
 	}
 	checkErr(err, "Program::build()");
 
-	kernel = new cl::Kernel(*program, enhanced == 3 ? "dect2" : "dect", &err);
+	kernel = new cl::Kernel(*program, use_certainties ? "dect3" : (enhanced == 3 ? "dect2" : "dect"), &err);
 	checkErr(err, "Kernel::Kernel()");
 
 	queue = new cl::CommandQueue(*context, devices[0], 0, &err);
@@ -285,6 +287,8 @@ int dect_algo_opencl(int enhanced,
 	float min_step,
 	int16_t *m,
 	float mr,
+	void *c,
+	float c_factor,
 	int idx_adjust)
 {
 	cl_int err;
@@ -338,6 +342,14 @@ int dect_algo_opencl(int enhanced,
 		&err);
 	checkErr(err, "Buffer::Buffer()");
 
+	cl::Buffer outc(
+		*context,
+		CL_MEM_WRITE_ONLY,
+		c ? out_size : sizeof(cl_mem),
+		NULL,
+		&err);
+	checkErr(err, "Buffer::Buffer()");
+
 	/* Input buffers */
 	cl::Buffer ina(
 		*context,
@@ -382,8 +394,18 @@ int dect_algo_opencl(int enhanced,
 	checkErr(err, "Kernel::setArg(13)");
 	err = kernel->setArg(14, m ? 1 : 0);
 	checkErr(err, "Kernel::setArg(14)");
-	err = kernel->setArg(15, idx_adjust);
-	checkErr(err, "Kernel::setArg(15)");
+
+	int next_arg = 15;
+	if (do_certainties)
+	{
+		err = kernel->setArg(next_arg++, outc);
+		checkErr(err, "Kernel::setArg(outc)");
+		err = set_float_arg(kernel, next_arg++, c_factor);
+		checkErr(err, "Kernel::setArg(c_factor)");
+	}
+
+	err = kernel->setArg(next_arg++, idx_adjust);
+	checkErr(err, "Kernel::setArg(idx_adjust)");
 
 	cl::Event event;
 
@@ -401,7 +423,7 @@ int dect_algo_opencl(int enhanced,
 	event.wait();
 
 	/* Get output buffers */
-	cl::Event eventx, eventy, eventz, eventm;
+	cl::Event eventx, eventy, eventz, eventm, eventc;
 	err = queue->enqueueReadBuffer(
 		outx,
 		CL_FALSE,
@@ -444,6 +466,18 @@ int dect_algo_opencl(int enhanced,
 			&eventm);
 		checkErr(err, "CommandQueue::enqueueReadBuffer()");
 	}
+	if (c)
+	{
+		err = queue->enqueueReadBuffer(
+			outc,
+			CL_FALSE,
+			0,
+			out_size,
+			c,
+			NULL,
+			&eventc);
+		checkErr(err, "CommandQueue::enqueueReadBuffer()");
+	}
 
 	// Need to wait for copying completion prior to
 	//  returning to main as next thing will be libtiff
@@ -453,6 +487,8 @@ int dect_algo_opencl(int enhanced,
 	eventz.wait();
 	if (m)
 		eventm.wait();
+	if (c)
+		eventc.wait();
 
 	return 0;
 }

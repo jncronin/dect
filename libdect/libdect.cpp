@@ -56,6 +56,8 @@ int dect_algo_opencl(int enhanced,
 	float min_step,
 	int16_t *m,
 	float mr,
+	void *c,
+	float c_factor,
 	int idx_adjust);
 #else
 int opencl_get_device_count()
@@ -128,15 +130,16 @@ int dect_algo_simul(int enhanced,
 
 #if HAS_OPENCL
 int opencl_init(int platform, int enhanced,
-	int use_single_fp, libdect_output_type otype);
+	int use_single_fp, libdect_output_type otype, int use_certainties);
 #else
 int opencl_init(int platform, int enhanced,
-	int use_single_fp, libdect_output_type otype)
+	int use_single_fp, libdect_output_type otype, int use_certainties)
 {
 	(void)platform;
 	(void)enhanced;
 	(void)use_single_fp;
 	(void)use_u16_output;
+	(void)use_certainties;
 	return -1;
 }
 #endif
@@ -160,11 +163,11 @@ EXPORT const char *dect_getDeviceName(int idx)
 }
 
 EXPORT int dect_initDevice(int idx, int enhanced,
-	int use_single_fp, libdect_output_type otype)
+	int use_single_fp, int use_certainties, libdect_output_type otype)
 {
 	if (idx >= 2)
 		opencl_init(idx - 2, enhanced, use_single_fp,
-			otype);
+			otype, use_certainties);
 	_use_single_fp = use_single_fp;
 	_otype = otype;
 	return 0;
@@ -264,6 +267,8 @@ EXPORT int dect_process(
 	float min_step,
 	int16_t *m,
 	float mr,
+	void *c,
+	float c_factor,
 	int idx_adjust)
 {
 	switch (device_id)
@@ -286,7 +291,7 @@ EXPORT int dect_process(
 		auto ret = dect_algo_opencl(enhanced,
 			a, b, alphaa, betaa, gammaa,
 			alphab, betab, gammab, x, y, z, pix_count,
-			min_step, m, mr, idx_adjust);
+			min_step, m, mr, c, c_factor, idx_adjust);
 		if (ret != 0)
 		{
 			std::cerr << "ERROR: OpenCL algorithm failed, switching to CPU" << std::endl;
