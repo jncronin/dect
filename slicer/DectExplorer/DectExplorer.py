@@ -38,11 +38,34 @@ class DectExplorerWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
+  
+  def period(self):
+    crosshairNode=slicer.util.getNode('Crosshair') 
+    m = [0.0,]*3
+    crosshairNode.GetCursorPositionRAS(m)
+    
+    if(self.tw.columnCount != 2):
+      self.tw.setColumnCount(2)
+      headers = [ "A", "B" ]
+      self.tw.setHorizontalHeaderLabels(headers)
+    
+    cur_row = self.tw.rowCount
+    
+    self.tw.setRowCount(cur_row + 1)
+    self.tw.setItem(cur_row, 0, qt.QTableWidgetItem("%d" % m[0]))
+    self.tw.setItem(cur_row, 1, qt.QTableWidgetItem("%d" % m[1]))   
+
+  def cleanup(self):
+    print "Unloading"
+    self.s.setKey(qt.QKeySequence())
+    self.s.delete()
    
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
     
-    # Instantiate and connect widgets ...
+    # Attach us to a shortcut on the period key    
+    self.s = qt.QShortcut(qt.QKeySequence('.'), slicer.util.mainWindow())
+    self.s.connect('activated()', self.period)
 
     #
     # Parameters Area
@@ -109,16 +132,41 @@ class DectExplorerWidget(ScriptedLoadableModuleWidget):
     parametersFormLayout.addRow(self.applyButton)
     
     #
+    # Clear output button
+    #
+    self.clearButton = qt.QPushButton("Clear Output")
+    self.clearButton.toolTip = "Clear output table"
+    self.clearButton.enabled = True
+    parametersFormLayout.addRow(self.clearButton)
+    
+    #
     # Progress Bar
     #
     self.progbar = qt.QProgressBar();
     self.progbar.setValue(0);
     parametersFormLayout.addRow(self.progbar);
+    
+    #
+    # Output Area
+    #
+    outputCollapsibleButton = ctk.ctkCollapsibleButton()
+    outputCollapsibleButton.text = "Output"
+    self.layout.addWidget(outputCollapsibleButton)
+
+    # Layout within the dummy collapsible button
+    outputFormLayout = qt.QFormLayout(outputCollapsibleButton)
+    
+    # Output table
+    self.tw = qt.QTableWidget()
+    outputFormLayout.addRow(self.tw)
+
 
     # connections
     self.applyButton.connect('clicked(bool)', self.onApplyButton)
+    self.clearButton.connect('clicked(bool)', self.onClearButton)
     self.inputa.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.inputb.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.ovol.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
    
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -134,6 +182,11 @@ class DectExplorerWidget(ScriptedLoadableModuleWidget):
   def onApplyButton(self):
     logic = DectExplorerLogic()
     logic.run(self.inputa.currentNode(), self.inputb.currentNode(), self.ovol.currentNode(), 200, self.progbar)
+    
+  def onClearButton(self):
+    self.tw.setRowCount(0)
+    self.tw.setColumnCount(0)
+
 
 #
 # slicer-dectLogic
