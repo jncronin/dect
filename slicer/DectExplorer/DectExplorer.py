@@ -201,9 +201,6 @@ class DectExplorerLogic(ScriptedLoadableModuleLogic):
     o = vtk.util.numpy_support.vtk_to_numpy(imageData.GetPointData().GetScalars()).reshape([1,200,200])
     o[:] = vals
     
-    ovol.SetSpacing(ospacing)
-    ovol.SetOrigin([r[1][0][0], r[1][1][0], 0])
-    
     dn = ovol.GetDisplayNode()
     if not dn:
       import vtk
@@ -212,9 +209,22 @@ class DectExplorerLogic(ScriptedLoadableModuleLogic):
       ovol.SetAndObserveDisplayNodeID(dn.GetID())
     dn.SetAndObserveColorNodeID(slicer.util.getNode("Rainbow").GetID())
     
+    ovol.SetSpacing(ospacing)
+    ovol.SetOrigin([r[1][0][0], r[1][1][0], 0])
+    
     ovol.StorableModified()
     ovol.Modified()
     #ovol.InvokeEvent(slicer.vtkMRMLVolumeNode.ImageDataModifiedEvent, ovol)
+    
+    #assign to red viewer
+    lm = slicer.app.layoutManager()
+    sl = lm.sliceWidget("Red").sliceLogic()
+    red_cn = sl.GetSliceCompositeNode()
+    red_cn.SetBackgroundVolumeID(ovol.GetID())
+    red_cn.SetForegroundVolumeID(None)
+    red_cn.SetLabelVolumeID(None)
+    sl.SetSliceOffset(20)
+    sl.FitSliceToAll()
     
     #setSliceViewerLayers(background=ovol)
 
