@@ -207,7 +207,7 @@ class DectExplorerLogic(ScriptedLoadableModuleLogic):
       dn = slicer.vtkMRMLScalarVolumeDisplayNode()
       slicer.mrmlScene.AddNode(dn)
       ovol.SetAndObserveDisplayNodeID(dn.GetID())
-    dn.SetAndObserveColorNodeID(slicer.util.getNode("Rainbow").GetID())
+    dn.SetAndObserveColorNodeID(slicer.util.getNode("FullRainbow").GetID())
     
     ovol.SetSpacing(ospacing)
     ovol.SetOrigin([r[1][0][0], r[1][1][0], 0])
