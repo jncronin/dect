@@ -18,7 +18,7 @@ class slicerdect(ScriptedLoadableModule):
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "DECT" # TODO make this more human readable by adding spaces
-    self.parent.categories = ["Examples"]
+    self.parent.categories = ["DECT"]
     self.parent.dependencies = []
     self.parent.contributors = ["John Cronin (KCL)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
