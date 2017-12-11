@@ -63,7 +63,14 @@ class DectExplorerWidget(ScriptedLoadableModuleWidget):
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
     
-    # Attach us to a shortcut on the period key    
+    # Attach us to a shortcut on the period key
+    try:
+      if(self.s):
+        self.s.setKey(qt.QKeySequence())
+        self.s.delete()
+    except AttributeError:
+      pass
+    
     self.s = qt.QShortcut(qt.QKeySequence('.'), slicer.util.mainWindow())
     self.s.connect('activated()', self.period)
 
@@ -159,7 +166,40 @@ class DectExplorerWidget(ScriptedLoadableModuleWidget):
     # Output table
     self.tw = qt.QTableWidget()
     outputFormLayout.addRow(self.tw)
+    
+    #
+    # Examine Area
+    #
+    examineCollapsibleButton = ctk.ctkCollapsibleButton()
+    examineCollapsibleButton.text = "Examine Output DECT Regions"
+    self.layout.addWidget(examineCollapsibleButton)
 
+    # Layout within the dummy collapsible button
+    examineFormLayout = qt.QFormLayout(examineCollapsibleButton)
+    
+    # Output label map
+    self.olm = slicer.qMRMLNodeComboBox()
+    self.olm.nodeTypes = ["vtkMRMLLabelMapVolumeNode"]
+    self.olm.selectNodeUponCreation = True
+    self.olm.addEnabled = True
+    self.olm.removeEnabled = False
+    self.olm.noneEnabled = False
+    self.olm.renameEnabled = True
+    self.olm.showHidden = False
+    self.olm.showChildNodeTypes = False
+    self.olm.setMRMLScene( slicer.mrmlScene )
+    self.olm.setToolTip( "Pick the output to the algorithm." )
+    examineFormLayout.addRow("Output Label Map: ", self.olm)
+
+    # Threshold
+    self.olmthresh = qt.QLineEdit()
+    self.olmthresh.text = '30'
+    examineFormLayout.addRow("Threshold (+/-): ", self.olmthresh)
+    
+    # OLM Run
+    self.olmapply = qt.QPushButton("Run")
+    self.olmapply.enabled = False
+    examineFormLayout.addRow(self.olmapply)
 
     # connections
     self.applyButton.connect('clicked(bool)', self.onApplyButton)
@@ -167,6 +207,10 @@ class DectExplorerWidget(ScriptedLoadableModuleWidget):
     self.inputa.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.inputb.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.ovol.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.olm.connect("currentNodeChanged(vtkMRMLNode*)",
+    self.onSelect)
+    self.olmthresh.textChanged.connect(self.onSelect)
+    self.olmapply.connect('clicked(bool)', self.onOLMApply)
    
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -178,10 +222,24 @@ class DectExplorerWidget(ScriptedLoadableModuleWidget):
     
   def onSelect(self):
     self.applyButton.enabled = self.inputa.currentNode() and self.inputb.currentNode() and self.ovol.currentNode()
+    if(self.inputa.currentNode() and self.inputb.currentNode() and self.olm.currentNode()):
+      try:
+        int(self.olmthresh.text)
+        self.olmapply.enabled = True
+      except ValueError:
+        self.olmapply.enabled = False
 
   def onApplyButton(self):
     logic = DectExplorerLogic()
     logic.run(self.inputa.currentNode(), self.inputb.currentNode(), self.ovol.currentNode(), 200, self.progbar)
+    
+  def onOLMApply(self):
+    # extract data from table widget
+    vals = []
+    for row in range(self.tw.rowCount):
+      vals.append([int(self.tw.item(row,0).text()), int(self.tw.item(row,1).text())])
+    logic = DectExplorerLogic()
+    logic.examine(self.inputa.currentNode(), self.inputb.currentNode(), self.olm.currentNode(), vals, int(self.olmthresh.text))
     
   def onClearButton(self):
     self.tw.setRowCount(0)
@@ -201,6 +259,61 @@ class DectExplorerLogic(ScriptedLoadableModuleLogic):
   Uses ScriptedLoadableModuleLogic base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
+  
+  def examine(self, inputa, inputb, olm, vals, thresh):
+    print vals
+    
+    # Get input volume array data
+    import vtk.util.numpy_support
+    inputa_im = inputa.GetImageData()
+    inputa_shape = list(inputa_im.GetDimensions())
+    inputa_shape.reverse()
+    a = vtk.util.numpy_support.vtk_to_numpy(inputa_im.GetPointData().GetScalars()).reshape(inputa_shape)
+
+    inputb_im = inputb.GetImageData()
+    inputb_shape = list(inputb_im.GetDimensions())
+    inputb_shape.reverse()
+    b = vtk.util.numpy_support.vtk_to_numpy(inputb_im.GetPointData().GetScalars()).reshape(inputb_shape)
+
+    # Get output lm array data
+    lm_im = olm.GetImageData()
+    if not lm_im:
+      import vtk
+      lm_im = vtk.vtkImageData()
+      olm.SetAndObserveImageData(lm_im)
+    lm_im.SetDimensions(inputa_im.GetDimensions())
+    lm_im.AllocateScalars(inputa_im.GetScalarType(), 1)
+
+    lm_shape = list(lm_im.GetDimensions())
+    lm_shape.reverse()
+    lm = vtk.util.numpy_support.vtk_to_numpy(lm_im.GetPointData().GetScalars()).reshape(lm_shape)
+
+    # threshold the output appropriately
+    lm.fill(0)
+    for zone in range(len(vals)):
+      lm[(a >= (vals[zone][0] - thresh)) & (a <= (vals[zone][0] + thresh)) & (b >= (vals[zone][1] - thresh)) & (b <= (vals[zone][1] + thresh))] = zone + 1
+
+    # have label map spacing etc match that of the input
+    olm.SetSpacing(inputa.GetSpacing())
+    olm.SetOrigin(inputa.GetOrigin())
+    m = vtk.vtkMatrix4x4()
+    inputa.GetIJKToRASDirectionMatrix(m)
+    olm.SetIJKToRASDirectionMatrix(m)
+    olm.StorableModified()
+    olm.Modified()
+    
+    #assign to red viewer with 50:50 merge of A:B
+    lm = slicer.app.layoutManager()
+    sl = lm.sliceWidget("Red").sliceLogic()
+    red_cn = sl.GetSliceCompositeNode()
+    red_cn.SetBackgroundVolumeID(inputa.GetID())
+    red_cn.SetForegroundVolumeID(inputb.GetID())
+    red_cn.SetForegroundOpacity(0.5)
+    red_cn.SetLabelVolumeID(olm.GetID())
+    sl.SetSliceOffset(20)
+    sl.FitSliceToAll()
+
+
 
   def run(self, inputa, inputb, ovol, bins = 200, pb = None):
     """
