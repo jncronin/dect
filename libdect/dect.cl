@@ -40,6 +40,14 @@ kernel void dect(global short *a, global short *b,
 	FPTYPE dA = (FPTYPE)a[idx];
 	FPTYPE dB = (FPTYPE)b[idx];
 
+	/* Clamp actual value to the max/min of the input values */
+	FPTYPE maxA = max(alphaa, max(betaa, gammaa));
+	FPTYPE minA = min(alphaa, min(betaa, gammaa));
+	FPTYPE maxB = max(alphab, max(betab, gammab));
+	FPTYPE minB = min(alphab, min(betab, gammab));
+	dA = clamp(dA, minA, maxA);
+	dB = clamp(dB, minB, maxB);
+
 	/* First, iterate through ratio and ab at 0.1 intervals
 	to ensure we don't miss an approximate solution, then
 	iterate to find the actual best value - this prevents us
@@ -184,6 +192,14 @@ kernel void dect2(global short *a, global short *b,
 
 	FPTYPE dA = a[idx];
 	FPTYPE dB = b[idx];
+
+	/* Clamp actual value to the max/min of the input values */
+	FPTYPE maxA = max(alphaa, max(betaa, gammaa));
+	FPTYPE minA = min(alphaa, min(betaa, gammaa));
+	FPTYPE maxB = max(alphab, max(betab, gammab));
+	FPTYPE minB = min(alphab, min(betab, gammab));
+	dA = clamp(dA, minA, maxA);
+	dB = clamp(dB, minB, maxB);
 
 	FPTYPE tot_best_a = 0.0;
 	FPTYPE tot_best_b = 0.0;

@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <stddef.h>
+#include <algorithm>
 
 #ifndef _MSC_VER
 #ifdef __GNUC__
@@ -98,6 +99,14 @@ void dect_algo_cpu(int enhanced,
 #endif
 	FPTYPE dA = a[idx];
 	FPTYPE dB = b[idx];
+
+	/* Clamp actual value to the max/min of the input values */
+	FPTYPE maxA = std::max(alphaa, std::max(betaa, gammaa));
+	FPTYPE minA = std::min(alphaa, std::min(betaa, gammaa));
+	FPTYPE maxB = std::max(alphab, std::max(betab, gammab));
+	FPTYPE minB = std::min(alphab, std::min(betab, gammab));
+	dA = std::clamp(dA, minA, maxA);
+	dB = std::clamp(dB, minB, maxB);
 
 	FPTYPE tot_best_a = 0.0;
 	FPTYPE tot_best_b = 0.0;
