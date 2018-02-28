@@ -175,7 +175,7 @@ kernel void dect(global short *a, global short *b,
 	z[idx] = best_c;
 
 	if(do_merge)
-		m[idx] = (short)(dA * mr + dB * (1.0 - mr));
+		m[idx] = (short)((FPTYPE)a[idx] * mr + (FPTYPE)b[idx] * (1.0 - mr));
 }
 
 kernel void dect2(global short *a, global short *b,
@@ -394,7 +394,7 @@ kernel void dect2(global short *a, global short *b,
 	z[idx] = best_c;
 
 	if(do_merge)
-		m[idx] = (short)(dA * mr + dB * (1.0 - mr));
+		m[idx] = (short)((FPTYPE)a[idx] * mr + (FPTYPE)b[idx] * (1.0 - mr));
 }
 
 )OPENCL";

@@ -319,7 +319,9 @@ void dect_algo_cpu(int enhanced,
 	z[idx] = best_c;
 
 	if (m)
-		m[idx] = (uint16_t)(dA * mr + dB * (1.0f - mr));
+	{
+		m[idx] = (int16_t)((FPTYPE)a[idx] * mr + (FPTYPE)b[idx] * (1.0 - mr));
+	}
 }
 
 int dect_algo_cpu_iter(int enhanced,
