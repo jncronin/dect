@@ -402,13 +402,28 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
     spacing = inputa.GetSpacing()
     origin = inputa.GetOrigin()
     
+    iasn_origfn = None
+    ibsn_origfn = None
+    if(inputa.GetStorageNode() is not None):
+      iasn_origfn = inputa.GetStorageNode().GetFileName()
+    if(inputb.GetStorageNode() is not None):
+      ibsn_origfn = inputb.GetStorageNode().GetFileName()
+    
     slicer.util.saveNode(inputa, ia)
     slicer.util.saveNode(inputb, ib)
     
     iasn = inputa.GetStorageNode()
     ibsn = inputb.GetStorageNode()
-    iasn.SetFileName(iasn.GetFileName().replace(".tiff", ".nrrd"))
-    ibsn.SetFileName(ibsn.GetFileName().replace(".tiff", ".nrrd"))
+    
+    if(iasn_origfn is not None):
+      iasn.SetFileName(iasn_origfn)
+    else:
+      iasn.SetFileName(iasn.GetFileName().replace(".tiff", ".nrrd"))
+    
+    if(ibsn_origfn is not None):
+      ibsn.SetFileName(ibsn_origfn)
+    else:
+      ibsn.SetFileName(ibsn.GetFileName().replace(".tiff", ".nrrd"))
     
     startupinfo = None
     if os.name == 'nt':
@@ -460,7 +475,7 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
       sn.SetFileName(ox.replace(".tiff", ".nrrd"))
    
     logging.info('Processing completed')
-    
+      
     if pb is None:
       pass
     else:
