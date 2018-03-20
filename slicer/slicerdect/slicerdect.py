@@ -323,6 +323,10 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
     self.applyButton.connect('clicked(bool)', self.onApplyButton)
     self.inputa.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.inputb.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.outputa.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.outputb.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.outputc.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.outputm.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.alphaa.textChanged.connect(self.persistSettings)
     self.betaa.textChanged.connect(self.persistSettings)
     self.gammaa.textChanged.connect(self.persistSettings)
@@ -358,7 +362,9 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
     self.onSelect()
 
   def onSelect(self):
-    self.applyButton.enabled = self.inputa.currentNode() and self.inputb.currentNode() and self.dectExeGood
+    self.applyButton.enabled = self.inputa.currentNode() and self.inputb.currentNode() and self.dectExeGood and \
+      (self.inputa.currentNode() != self.inputb.currentNode()) and \
+      (self.outputa.currentNode() or self.outputb.currentNode() or self.outputc.currentNode() or self.outputm.currentNode())    
 
   def onApplyButton(self):
     logic = slicerdectLogic()
