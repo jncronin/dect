@@ -33,6 +33,7 @@ enum libdect_output_type
 
 #ifndef IN_LIBDECT
 int dect_getDeviceCount();
+const char *dect_getVersion();
 const char *dect_getDeviceName(int idx);
 int dect_initDevice(int idx, int enhanced, int use_single_fp,
 	libdect_output_type otype);

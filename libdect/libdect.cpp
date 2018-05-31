@@ -37,6 +37,9 @@
 #define EXPORT __declspec(dllexport)
 #endif
 
+#include "git.version.h"
+static const char *prettyversion = "v0.3";
+
 #define IN_LIBDECT
 #include "libdect.h"
 
@@ -69,6 +72,36 @@ const char *opencl_get_device_name(int idx)
 	return NULL;
 }
 #endif
+
+const char *dect_getVersion()
+{
+	// parse gitversion string to something readable
+	const int BUFSIZE = 128;
+
+	const char *ptr = NULL;
+	const char *s = gitversion;
+	for (; *s; s++)
+	{
+		if (!isspace(*s))
+		{
+			ptr = s;
+			break;
+		}
+	}
+
+	char *vstr = (char*)malloc(BUFSIZE);
+	char *vptr = vstr;
+	if (ptr)
+	{
+		for (int i = 0; i < 7 && *ptr; i++, ptr++)
+			*vptr++ = *ptr;
+	}
+	*vptr++ = '\0';
+	strcat(vstr, " ");
+	strcat(vstr, prettyversion);
+
+	return vstr;
+}
 
 int dect_algo_cpu_iter(int enhanced,
 	const int16_t * RESTRICT a, const int16_t * RESTRICT b,

@@ -142,6 +142,7 @@ char *ascii(const TCHAR *s)
 
 static void help(TCHAR *fname)
 {
+	std::cout << "dect " << dect_getVersion() << std::endl;
 	std::cout << "Usage:" << std::endl;
 	std::cout << ascii(fname) << " -A file_A.tiff -B file_B.tiff [options]" << std::endl;
 	std::cout << std::endl;
