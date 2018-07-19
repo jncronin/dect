@@ -1,0 +1,2 @@
+static const char *gitversion = "@GIT_VER@";
+
