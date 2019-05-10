@@ -20,6 +20,7 @@
 */
 
 #include <stdint.h>
+#include <string.h>
 #include <iostream>
 #ifndef _MSC_VER
 #include "config.h"
@@ -103,7 +104,7 @@ const char *dect_getVersion()
 	return vstr;
 }
 
-int dect_algo_cpu_iter(int enhanced,
+static int dect_algo_cpu_iter(int enhanced,
 	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
 	float alphaa, float betaa, float gammaa,
 	float alphab, float betab, float gammab,
@@ -169,7 +170,6 @@ int opencl_init(int platform, int enhanced,
 	(void)platform;
 	(void)enhanced;
 	(void)use_single_fp;
-	(void)use_u16_output;
 	return -1;
 }
 #endif
