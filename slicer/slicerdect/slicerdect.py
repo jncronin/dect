@@ -488,6 +488,12 @@ class slicerdectLogic(ScriptedLoadableModuleLogic):
       pb.setValue(100)
       slicer.app.processEvents()
 
+    if outputm is not None:
+      slicer.util.setSliceViewerLayers(background=outputm)
+      for sliceViewName in slicer.app.layoutManager().sliceViewNames():
+        sw = slicer.app.layoutManager().sliceWidget(sliceViewName)
+        sw.sliceLogic().FitSliceToAll()
+
     return True
 
 
