@@ -391,8 +391,8 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			ret = TIFFSetField(af, TIFFTAG_PLANARCONFIG, pc);
 			assert(ret == 1);
-			ret = TIFFSetField(af, TIFFTAG_ROWSPERSTRIP, rps);
-			assert(ret == 1);
+			//ret = TIFFSetField(af, TIFFTAG_ROWSPERSTRIP, rps);
+			//assert(ret == 1);
 			ret = TIFFSetField(af, TIFFTAG_COMPRESSION, comp);
 			assert(ret == 1);
 			ret = TIFFSetField(af, TIFFTAG_RESOLUTIONUNIT, ru);
@@ -422,8 +422,8 @@ int _tmain(int argc, TCHAR *argv[])
 			assert(ret == 1);
 			ret = TIFFSetField(bf, TIFFTAG_PLANARCONFIG, pc);
 			assert(ret == 1);
-			ret = TIFFSetField(bf, TIFFTAG_ROWSPERSTRIP, rps);
-			assert(ret == 1);
+			//ret = TIFFSetField(bf, TIFFTAG_ROWSPERSTRIP, rps);
+			//assert(ret == 1);
 			ret = TIFFSetField(bf, TIFFTAG_COMPRESSION, comp);
 			assert(ret == 1);
 			ret = TIFFSetField(bf, TIFFTAG_RESOLUTIONUNIT, ru);

@@ -74,7 +74,7 @@ const char *opencl_get_device_name(int idx)
 }
 #endif
 
-const char *dect_getVersion()
+EXPORT const char *dect_getVersion()
 {
 	// parse gitversion string to something readable
 	const int BUFSIZE = 128;
