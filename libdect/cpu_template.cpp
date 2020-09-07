@@ -1,4 +1,4 @@
-/* Copyright (C) 2016 by John Cronin
+/* Copyright (C) 2016-2020 by John Cronin
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -324,6 +324,29 @@ void dect_algo_cpu(int enhanced,
 	}
 }
 
+static void dect_algo_cpu_iter_thread(int enhanced,
+	const int16_t* RESTRICT a, const int16_t* RESTRICT b,
+	float alphaa, float betaa, float gammaa,
+	float alphab, float betab, float gammab,
+	OTYPE* RESTRICT x,
+	OTYPE* RESTRICT y,
+	OTYPE* RESTRICT z,
+	float min_step,
+	int16_t* RESTRICT m,
+	float mr,
+	int idx_adjust,
+	int thread_id,
+	int pix_per_thread)
+{
+	for (int i = 0; i < pix_per_thread; i++)
+	{
+		dect_algo_cpu(enhanced, a, b, alphaa, betaa, gammaa,
+			alphab, betab, gammab, thread_id * pix_per_thread + i, x, y, z, min_step,
+			m, mr, idx_adjust);
+	}
+
+}
+
 int dect_algo_cpu_iter(int enhanced,
 	const int16_t * RESTRICT a, const int16_t * RESTRICT b,
 	float alphaa, float betaa, float gammaa,
@@ -337,12 +360,18 @@ int dect_algo_cpu_iter(int enhanced,
 	float mr,
 	int idx_adjust)
 {
-#if _MSC_VER >= 1700
-#pragma loop (hint_parallel(0))
-#endif
-	for (auto i = 0; i < (int)pix_count; i++)
-		dect_algo_cpu(enhanced, a, b, alphaa, betaa, gammaa,
-			alphab, betab, gammab, i, x, y, z, min_step,
-			m, mr, idx_adjust);
+	// TODO ensure num of pixels divides 64
+#define THREADS 64
+
+#pragma omp parallel for
+	for (auto i = 0; i < THREADS; i++)
+		dect_algo_cpu_iter_thread(
+			enhanced, a, b, alphaa, betaa, gammaa,
+			alphab, betab, gammab, x, y, z, min_step,
+			m, mr, idx_adjust,
+			i, (int)pix_count / THREADS);
+
+
+
 	return 0;
 }

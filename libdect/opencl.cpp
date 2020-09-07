@@ -24,7 +24,8 @@
 #include <stdio.h>
 #include <utility>
 
-#include <CL/cl.hpp>
+#define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
+#include "opencl.hpp"
 
 #include <cstdio>
 #include <cstdlib>

@@ -56,6 +56,9 @@
     <ClInclude Include="libdect.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="opencl.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="dect.cl" />
