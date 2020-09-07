@@ -1,5 +1,6 @@
 include(FindPkgConfig)
 pkg_search_module(OCL OpenCL)
+find_package(OpenMP)
 
 execute_process(
 	COMMAND git log -1 --format=%h
@@ -34,6 +35,11 @@ set_target_properties(dectlib PROPERTIES OUTPUT_NAME dect)
 add_library(dectlibshared SHARED ${LIBDECT_SOURCES})
 set_target_properties(dectlibshared PROPERTIES OUTPUT_NAME dect)
 set_target_properties(dectlibshared PROPERTIES CXX_VISIBILITY_PRESET hidden)
+
+if(OpenMP_CXX_FOUND)
+	target_link_libraries(dectlib OpenMP::OpenMP_CXX)
+	target_link_libraries(dectlibshared OpenMP::OpenMP_CXX)
+endif()
 
 install(TARGETS dectlib dectlibshared
 	ARCHIVE DESTINATION lib

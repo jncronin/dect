@@ -1,6 +1,7 @@
 find_package(PkgConfig REQUIRED)
 pkg_search_module(OCL OpenCL)
 pkg_search_module(TIFF libtiff-4 REQUIRED)
+find_package(OpenMP)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
@@ -16,6 +17,10 @@ add_executable(dect ${DECT_SOURCES})
 target_link_libraries(dect ${EXTRA_LIBS})
 target_link_libraries(dect ${TIFF_LIBRARIES})
 target_link_libraries(dect ${OCL_LIBRARIES})
+
+if(OpenMP_CXX_FOUND)
+	target_link_libraries(dect OpenMP::OpenMP_CXX)
+endif()
 
 target_compile_options(dect PUBLIC ${OCL_CFLAGS_OTHER})
 target_compile_options(dect PUBLIC ${TIFF_CFLAGS_OTHER})
