@@ -115,6 +115,7 @@ const char *opencl_get_device_name(int idx)
 			ss << "OpenCL " << platformName << " (" << platformVendor << ")" << std::endl;
 
 			auto str = ss.str();
+			str.erase(str.find_last_not_of(" \n\r\t")+1);
 
 			char *ret = new char[str.size() + 1];
 			std::copy(str.begin(), str.end(), ret);
