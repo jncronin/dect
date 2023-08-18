@@ -22,8 +22,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <iostream>
-#ifndef _MSC_VER
 #include "config.h"
+#ifndef _MSC_VER
 #ifdef __GNUC__
 #define EXPORT __attribute__ ((visibility ("default")))
 #define RESTRICT __restrict

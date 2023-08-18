@@ -1,6 +1,10 @@
-include(FindPkgConfig)
-pkg_search_module(OCL OpenCL)
+find_package(OpenCL)
 find_package(OpenMP)
+
+message(OpenCL="${OpenCL_FOUND}")
+message(OpenMP="${OpenMP_CXX_FOUND}")
+
+set (CMAKE_CXX_STANDARD 17)
 
 execute_process(
 	COMMAND git log -1 --format=%h
@@ -13,9 +17,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 set(LIBDECT_SOURCES "libdect.cpp" "simul.cpp" "cpud16.cpp" "cpud8.cpp" "cpudf32.cpp" "cpudf64.cpp" "cpuf16.cpp" "cpuf8.cpp" "cpuff32.cpp" "cpuff64.cpp" )
-if(OCL_FOUND)
+if(OpenCL_FOUND)
 	set(LIBDECT_SOURCES ${LIBDECT_SOURCES} "opencl.cpp")
-endif(OCL_FOUND)
+endif(OpenCL_FOUND)
 
 configure_file (
 	"${CMAKE_CURRENT_SOURCE_DIR}/config.h.in" 
@@ -39,6 +43,12 @@ set_target_properties(dectlibshared PROPERTIES CXX_VISIBILITY_PRESET hidden)
 if(OpenMP_CXX_FOUND)
 	target_link_libraries(dectlib OpenMP::OpenMP_CXX)
 	target_link_libraries(dectlibshared OpenMP::OpenMP_CXX)
+endif()
+
+if(OpenCL_FOUND)
+	target_link_libraries(dectlib OpenCL::OpenCL)
+	target_link_libraries(dectlibshared OpenCL::OpenCL)
+
 endif()
 
 install(TARGETS dectlib dectlibshared

@@ -1,2 +1,8 @@
-#define HAS_OPENCL 0@OCL_FOUND@
+#cmakedefine01 @OpenCL_FOUND@
+
+#ifdef @OpenCL_FOUND@
+    #define HAS_OPENCL 1
+#else
+    #define HAS_OPENCL 0
+#endif
 

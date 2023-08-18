@@ -19,8 +19,6 @@
 * THE SOFTWARE.
 */
 
-#if HAS_OPENCL
-
 #include <stdio.h>
 #include <utility>
 
@@ -459,5 +457,3 @@ int dect_algo_opencl(int enhanced,
 
 	return 0;
 }
-
-#endif /* HAS_OPENCL */
