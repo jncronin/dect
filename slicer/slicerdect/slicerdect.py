@@ -52,7 +52,7 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
       p2 = subprocess.Popen([p, '-h'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupinfo)
       p2.wait()
       p3 = p2.communicate()
-      p4 = p3[0]
+      p4 = p3[0].decode("utf-8")
       
       alphaare = 'a in file A \(defaults to (\-*[0-9]+)'
       betaare = 'b in file A \(defaults to (\-*[0-9]+)'
@@ -125,7 +125,7 @@ class slicerdectWidget(ScriptedLoadableModuleWidget):
       
       us.setValue("DECT/dect", p)
     except Exception as excpt:
-      print excpt
+      print (excpt)
       self.dectExeGood = False
 
   def setup(self):

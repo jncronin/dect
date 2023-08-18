@@ -56,7 +56,7 @@ class DectExplorerWidget(ScriptedLoadableModuleWidget):
     self.tw.setItem(cur_row, 1, qt.QTableWidgetItem("%d" % m[1]))   
 
   def cleanup(self):
-    print "Unloading"
+    print ("Unloading")
     self.s.setKey(qt.QKeySequence())
     self.s.delete()
    
@@ -261,7 +261,7 @@ class DectExplorerLogic(ScriptedLoadableModuleLogic):
   """
   
   def examine(self, inputa, inputb, olm, vals, thresh):
-    print vals
+    print (vals)
     
     # Get input volume array data
     import vtk.util.numpy_support
