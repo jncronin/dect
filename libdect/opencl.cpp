@@ -91,7 +91,7 @@ int opencl_get_device_count()
 {
 	std::vector< cl::Platform > platformList;
 	cl::Platform::get(&platformList);
-	return platformList.size();
+	return static_cast<int>(platformList.size());
 }
 
 const char *opencl_get_device_name(int idx)
@@ -331,7 +331,6 @@ int dect_algo_opencl(int enhanced,
 		&err);
 	checkErr(err, "Buffer::Buffer()");
 
-	int dummy_buf[4];
 	cl::Buffer outm(
 		*context,
 		CL_MEM_WRITE_ONLY,
