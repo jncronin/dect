@@ -45,7 +45,6 @@ endif()
 if(OpenCL_FOUND)
 	target_link_libraries(dectlib OpenCL::OpenCL)
 	target_link_libraries(dectlibshared OpenCL::OpenCL)
-
 endif()
 
 install(TARGETS dectlib dectlibshared
