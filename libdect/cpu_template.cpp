@@ -126,10 +126,10 @@ void dect_algo_cpu(int enhanced,
 
 	for (int i = 0; i < enhanced; i++)
 	{
-		FPTYPE cur_ratio = 0.5;
-		FPTYPE cur_ab = 0.66;
-		FPTYPE cur_step = 0.25;
-		FPTYPE cur_error = 5000.0 * 5000.0;
+		FPTYPE cur_ratio = static_cast<FPTYPE>(0.5);
+		FPTYPE cur_ab = static_cast<FPTYPE>(0.66);
+		FPTYPE cur_step = static_cast<FPTYPE>(0.25);
+		FPTYPE cur_error = static_cast<FPTYPE>(5000.0 * 5000.0);
 
 		FPTYPE calphaa, cbetaa, cgammaa;
 		FPTYPE calphab, cbetab, cgammab;
@@ -172,13 +172,15 @@ void dect_algo_cpu(int enhanced,
 		FPTYPE best_ab = 0.0;
 		FPTYPE best_ratio = 0.0;
 
-		for (FPTYPE test_ab = 0.0; test_ab <= 1.0; test_ab += 0.1)
+		for (FPTYPE test_ab = static_cast<FPTYPE>(0.0);
+			test_ab <= static_cast<FPTYPE>(1.0); test_ab += static_cast<FPTYPE>(0.1))
 		{
-			for (FPTYPE test_ratio = 0.0; test_ratio <= 1.0; test_ratio += 0.1)
+			for (FPTYPE test_ratio = static_cast<FPTYPE>(0.0);
+				test_ratio <= static_cast<FPTYPE>(1.0); test_ratio += static_cast<FPTYPE>(0.1))
 			{
 				FPTYPE cur_a = test_ab * test_ratio;
-				FPTYPE cur_b = test_ab * (1.0 - test_ratio);
-				FPTYPE cur_c = 1.0 - cur_a - cur_b;
+				FPTYPE cur_b = test_ab * (static_cast<FPTYPE>(1.0) - test_ratio);
+				FPTYPE cur_c = static_cast<FPTYPE>(1.0) - cur_a - cur_b;
 
 				FPTYPE dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
 				FPTYPE dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
@@ -198,7 +200,7 @@ void dect_algo_cpu(int enhanced,
 		}
 
 		/* Now do an iterative search to find the best values */
-		cur_step = 0.05;
+		cur_step = static_cast<FPTYPE>(0.05);
 		cur_ratio = best_ratio;
 		cur_ab = best_ab;
 
@@ -241,8 +243,8 @@ void dect_algo_cpu(int enhanced,
 					new_ratio = 1.0;
 
 				FPTYPE cur_a = new_ab * new_ratio;
-				FPTYPE cur_b = new_ab * (1.0 - new_ratio);
-				FPTYPE cur_c = 1.0 - new_ab;
+				FPTYPE cur_b = new_ab * (static_cast<FPTYPE>(1.0) - new_ratio);
+				FPTYPE cur_c = static_cast<FPTYPE>(1.0) - new_ab;
 
 				FPTYPE dA_est = calphaa * cur_a + cbetaa * cur_b + cgammaa * cur_c;
 				FPTYPE dB_est = calphab * cur_a + cbetab * cur_b + cgammab * cur_c;
@@ -270,7 +272,7 @@ void dect_algo_cpu(int enhanced,
 			}
 			else
 			{
-				cur_step = cur_step / 2.0;
+				cur_step = cur_step / static_cast<FPTYPE>(2.0);
 			}
 		}
 
@@ -280,18 +282,18 @@ void dect_algo_cpu(int enhanced,
 		{
 		case 0:
 			cur_best_a = cur_ab * cur_ratio;
-			cur_best_b = cur_ab * (1.0 - cur_ratio);
-			cur_best_c = 1.0 - cur_ab;
+			cur_best_b = cur_ab * (static_cast<FPTYPE>(1.0) - cur_ratio);
+			cur_best_c = static_cast<FPTYPE>(1.0) - cur_ab;
 			break;
 		case 1:
 			cur_best_c = cur_ab * cur_ratio;
-			cur_best_a = cur_ab * (1.0 - cur_ratio);
-			cur_best_b = 1.0 - cur_ab;
+			cur_best_a = cur_ab * (static_cast<FPTYPE>(1.0) - cur_ratio);
+			cur_best_b = static_cast<FPTYPE>(1.0) - cur_ab;
 			break;
 		case 2:
 			cur_best_b = cur_ab * cur_ratio;
-			cur_best_c = cur_ab * (1.0 - cur_ratio);
-			cur_best_a = 1.0 - cur_ab;
+			cur_best_c = cur_ab * (static_cast<FPTYPE>(1.0) - cur_ratio);
+			cur_best_a = static_cast<FPTYPE>(1.0) - cur_ab;
 			break;
 		}
 
