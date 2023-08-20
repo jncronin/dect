@@ -2,11 +2,10 @@ find_package(OpenCL)
 find_package(TIFF REQUIRED)
 find_package(OpenMP)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-
 set(DECT_SOURCES "main.cpp" "XGetOpt.cpp")
 set(EXTRA_LIBS ${EXTRA_LIBS} dectlib)
+
+set (CMAKE_CXX_STANDARD 11)
 
 include_directories(../libdect)
 include_directories(${TIFF_INCLUDE_DIRS})
