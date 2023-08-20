@@ -72,7 +72,7 @@ static int16_t *readTIFFDirectory(TIFF *f, size_t *buf_size)
 	char *buf;
 	tstrip_t strip;
 
-	uint16 bps;
+	uint16_t bps;
 	if (TIFFGetField(f, TIFFTAG_BITSPERSAMPLE, &bps))
 	{
 		if (bps != 16)
@@ -347,12 +347,12 @@ int _tmain(int argc, TCHAR *argv[])
 				do_rotate ? ((int)c_len - 1) : 0);
 
 			// attempt to write something out
-			uint32 iw, il, rps;
-			uint16 o, comp;
-			uint16 spp = 1;
-			uint16 bps = 16;
-			uint16 pc = PLANARCONFIG_CONTIG;
-			uint16 ru, ph;
+			uint32_t iw, il, rps;
+			uint16_t o, comp;
+			uint16_t spp = 1;
+			uint16_t bps = 16;
+			uint16_t pc = PLANARCONFIG_CONTIG;
+			uint16_t ru, ph;
 			float xp = 0.0f, yp = 0.0f, xr, yr;
 			int ret;
 			ret = TIFFGetField(cf, TIFFTAG_IMAGEWIDTH, &iw);
@@ -535,7 +535,7 @@ int _tmain(int argc, TCHAR *argv[])
 
 			// attempt to write something out
 			int ret;
-			uint16 bps = 8;
+			uint16_t bps = 8;
 			int sf = 1;
 			switch (otype)
 			{
@@ -551,11 +551,11 @@ int _tmain(int argc, TCHAR *argv[])
 				sf = 3;
 				break;
 			}
-			uint32 iw, il, rps;
-			uint16 o = ORIENTATION_TOPLEFT, comp = COMPRESSION_LZW;
-			uint16 spp = 1;
-			uint16 pc = PLANARCONFIG_CONTIG;
-			uint16 ru, ph;
+			uint32_t iw, il, rps;
+			uint16_t o = ORIENTATION_TOPLEFT, comp = COMPRESSION_LZW;
+			uint16_t spp = 1;
+			uint16_t pc = PLANARCONFIG_CONTIG;
+			uint16_t ru, ph;
 			float xp = 0.0f, yp = 0.0f, xr, yr;
 			ret = TIFFGetField(af, TIFFTAG_IMAGEWIDTH, &iw);
 			assert(ret == 1);
