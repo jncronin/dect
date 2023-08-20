@@ -13,9 +13,6 @@ execute_process(
 	OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-
 set(LIBDECT_SOURCES "libdect.cpp" "simul.cpp" "cpud16.cpp" "cpud8.cpp" "cpudf32.cpp" "cpudf64.cpp" "cpuf16.cpp" "cpuf8.cpp" "cpuff32.cpp" "cpuff64.cpp" )
 if(OpenCL_FOUND)
 	set(LIBDECT_SOURCES ${LIBDECT_SOURCES} "opencl.cpp")
